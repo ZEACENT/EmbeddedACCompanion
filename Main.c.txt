@@ -1,0 +1,53 @@
+// #include <stdio.h>
+// #include <pthread.h>
+// #include "EdpKit.h"
+// #include "ConnectOneNet.h"
+
+// //接收线程
+// void *OneNetReacv(void *arg)
+// {
+// 	char RecvBuffer[10] = {0};  //保存接收的字符串
+
+// 	while(1)
+// 	{
+// 		memset(RecvBuffer ,0 ,sizeof(RecvBuffer));
+// 		OneNet_RecvData((void*)&sockfd , RecvBuffer);
+// 		printf("RecvBuffer:%s\n", RecvBuffer);
+// 	}
+// }
+
+// int main(void)
+// {
+// 	char num = 0;
+// 	char buf[20] = {0};
+// 	pthread_t thread;
+
+// 	/************************ 硬件初始化 **************************/
+// 	OneNet_Init();
+// 	printf("HardWare Init Success!\n");
+
+// 	pthread_create(&thread, NULL,OneNetReacv, NULL);
+
+// 	while(1)
+// 	{
+// 		num += 1;
+// 		if (num > 100)
+// 		{
+// 			num = 0;
+// 		}
+
+// 		//发送数据给 OneNet 平台
+// 		memset(buf ,0 ,sizeof(buf));
+// 		//printf("=========================\n");
+// 		OneNet_SendData(buf,"Temp",num);
+
+// 		sleep(3);
+// 	}
+
+// 	/*关闭socket连接*/
+// 	TcpClientClose();
+// 	/* 等待线程退出 */
+//     pthread_join(thread,NULL);
+
+// 	return 0;
+// }

@@ -1,4 +1,0 @@
-arm-linux-gcc  test.c  -o font  -L./ -lfont  -lm 
-arm-linux-gcc -std=c99 -lfreetype -lpthread -o FnPj *.c #拷贝头和库文件
-
-arm-linux-gcc *.c -o Finals -L./ -I. -D_LINUX -std=gnu99 -lfont -lm -lfreetype -pthread

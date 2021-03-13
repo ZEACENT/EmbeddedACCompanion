@@ -1,4 +1,5 @@
 #include "ConnectOneNet.h"
+#include "common.h"
 #include <unistd.h>
 
 int sockfd;
@@ -58,19 +59,14 @@ void TcpClientClose(void)
 //	返回参数：	无
 //	说明：		无
 //==========================================================
-void OneNet_Init(void)
+int OneNet_Init(void)
 {
-	TcpClientInit(SERVERIP ,SERVERPORT);
-	//接入 OneNet 云平台
-	int ret = OneNet_DevLink(DEVICE_ID, AUTH_KEY);
-	if (ret < 0)
-	{
-		printf("OneNet_DevLink error!\n");
-	}else{
-		printf("OneNet_DevLink success!\n");
-		
-	}
-
+    TcpClientInit(SERVERIP ,SERVERPORT);
+    //接入 OneNet 云平台
+    if(OneNet_DevLink(DEVICE_ID, AUTH_KEY))
+        return -1;
+    else
+        return 0;
 }
 
 //==========================================================

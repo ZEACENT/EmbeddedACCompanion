@@ -79,7 +79,7 @@ int OneNet_DevLink(const char* devid, const char* auth_key);
 //	返回参数：	无
 //	说明：		无
 //==========================================================
-void OneNet_Init(void);
+int OneNet_Init(void);
 
 //==========================================================
 //	函数名称：	OneNet_SendData

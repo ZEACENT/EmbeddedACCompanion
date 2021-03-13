@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <stdlib.h>
+#include "common.h"
 #include "lcd.h"
 #include "font.h"
 
@@ -19,23 +20,18 @@ volatile int g_jpg_in_jpg_x;//video_chat.c 画中画显示的坐标
 volatile int g_jpg_in_jpg_y;
 
 //初始化LCD
-struct LcdDevice *lcd_open(void)
-{
-	//申请空间
+struct LcdDevice *lcd_open(const char* lcd_path){
 	struct LcdDevice* lcd = malloc(sizeof(struct LcdDevice));
 	if(lcd == NULL){
 		return NULL;
 	}
-	printf("lcd malloc ok\n");
 
-    g_fb_fd = open("/dev/fb0", O_RDWR);
+    g_fb_fd = open(lcd_path, O_RDWR);
 	lcd->fd = g_fb_fd;
 	if(lcd->fd < 0){
-		perror("open lcd fail");
 		free(lcd);
 		return NULL;
 	}
-	printf("open lcd ok\n");
 
     g_pfb_memory  = (unsigned int *)mmap(	NULL, 					//映射区的开始地址，设置为NULL时表示由系统决定映射区的起始地址
                                     FB_SIZE, 				//映射区的长度
@@ -45,7 +41,6 @@ struct LcdDevice *lcd_open(void)
                                     0						//被映射对象内容的起点
 	);
 	lcd->mp = g_pfb_memory;
-	printf("lcd mmap ok\n");
 
     return lcd;
 }
@@ -76,12 +71,17 @@ int lcd_draw_bmp(unsigned int x, unsigned int y, const char *pbmp_path){
 
 	if (bmp_fd == -1){
 		printf("open bmp error\r\n");
-
 		return -1;
 	}
+#if DEBUG
+	printf("open %s successfully\n", pbmp_path);
+#endif
 
 	/* 读取位图头部信息 */
 	read(bmp_fd, buf, 54);
+#if DEBUG
+	printf("read head successfully\n", pbmp_path);
+#endif
 	/* 宽度  */
 	bmp_width = buf[18];
 	bmp_width |= buf[19] << 8;
@@ -111,6 +111,9 @@ int lcd_draw_bmp(unsigned int x, unsigned int y, const char *pbmp_path){
 			lcd_draw_point(x, y, color);
 		}
 	}
+#if DEBUG
+	printf("lcd_draw_point successfully\n");
+#endif
 	close(bmp_fd);
 	return 0;
 }
@@ -199,7 +202,6 @@ int DrawPic_HWindows(int x, int y, const char *pbmp_path) {
 			color = red << 16 | green << 8 | blue << 0;
 			lcd_draw_point(x, y, color);
 		}
-		delay(1000000);
 	}
 	close(bmp_fd);
 	return 0;

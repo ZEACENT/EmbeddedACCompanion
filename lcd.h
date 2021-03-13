@@ -5,9 +5,8 @@
 #define LCD_HEIGHT 			480
 #define FB_SIZE				(LCD_WIDTH * LCD_HEIGHT * 4)
 
-int get_xy(void);
-void delay(int x);
-struct LcdDevice *lcd_open(void);
+int get_xy(const char* touch_screen_path);
+struct LcdDevice *lcd_open(const char* lcd_path);
 void lcd_draw_point(int x,int y, unsigned int color);
 int lcd_draw_bmp(unsigned int x, unsigned int y, const char *pbmp_path);
 void lcd_close(void);

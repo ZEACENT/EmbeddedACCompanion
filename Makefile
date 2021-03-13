@@ -2,7 +2,8 @@ all: EmbeddedACCompanion.exe
 
 CC=arm-linux-gcc
 CFLAGS= -L./ -I. -D_LINUX -std=gnu99 -lfont -lm -lfreetype -pthread
-CLIENT_OBJ= ConnectOneNet.o cJSON.o get_xy.o lcd2.o main.o to_wchar.o EdpKit.o freetype.o lcd.o letter.o test.o
+SRC= $(wildcard *.c)
+CLIENT_OBJ= $(patsubst %.c, %.o, ${SRC})
 
 %.o: %.c
 	$(CC) -c -o $@ $< $(CFLAGS)

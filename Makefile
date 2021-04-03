@@ -1,7 +1,7 @@
 all: EmbeddedACCompanion.exe
 
 CC=arm-linux-gcc
-CFLAGS= -L./ -I. -D_LINUX -std=gnu99 -lfont -lm -lfreetype -pthread
+CFLAGS= -L./lib -I./include -D_LINUX -std=gnu99 -lfont -lm -lfreetype -pthread 
 SRC= $(wildcard *.c)
 CLIENT_OBJ= $(patsubst %.c, %.o, ${SRC})
 

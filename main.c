@@ -128,7 +128,7 @@ int main(int argc, char **argv) {
     bitmap* bmTmp   = NULL;
     bitmap* bmAdd   = NULL;
     bitmap* bmSub   = NULL;
-    char buff[1024] = {0};
+    char buff[2048] = {0};
     char str[4];    //空调温度临时字串
 
     int PicNum = 1;

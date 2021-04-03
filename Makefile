@@ -11,8 +11,8 @@ CLIENT_OBJ= $(patsubst %.c, %.o, ${SRC})
 EmbeddedACCompanion.exe: $(CLIENT_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS)
 
-clean: $(CLIENT_OBJ)
-	rm -f $^
+clean:
+	rm -f $(CLIENT_OBJ)
 
 cleanExe:
 	rm -f EmbeddedACCompanion.exe

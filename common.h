@@ -1,6 +1,12 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+#define DEBUG           1
+#define BAN_ONE_NET     1
+#define BAN_ALI_CLD     1
+#define PRINT_X_Y       1
+#define LOCAL_CTRL      1
+
 /*---------------------------------------------------------------------------*/
 /* Type Definition Macros                                                    */
 /*---------------------------------------------------------------------------*/

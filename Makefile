@@ -2,6 +2,7 @@
 all: EmbeddedACCompanion.exe dhclient
 
 CC=arm-linux-gcc
+DHCPCC=arm-linux-gnueabihf-gcc
 CFLAGS= -L./lib -I./include -D_LINUX -std=gnu99 -lfont -lm -lfreetype -pthread 
 SRC= $(wildcard *.c)
 CLIENT_OBJ= $(patsubst %.c, %.o, ${SRC})
@@ -23,14 +24,11 @@ dhclient:
 	@if [ ! -d $(DHCPDIR) ] ; then						\
 		tar -xf $(DHCPDIR).tar;							\
 	fi
-	@cd $(DHCPDIR) && ./configure --host=arm-linux		\
-						--with-randomdev=no				\
-						--prefix=$(BUILDDIR)			\
-						ac_cv_file__dev_random=yes		\
-						CC=$(CC)						\
-						BUILD_CC=gcc					\
-	&& $(MAKE)											\
-	&& mv $(DHCPDIR)/client/dhclient $(BUILDDIR)/
+	@cd $(DHCPDIR)											\
+		&& ./configure										\
+		&& patch -N -p1 < ../dhcp-4.4.2.patch				\
+		&& $(MAKE) "CC=$(DHCPCC) -static"					\
+		&& mv $(DHCPDIR)/client/dhclient $(BUILDDIR)/
 
 .PHONY: clean
 clean:

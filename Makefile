@@ -26,7 +26,7 @@ dhclient:
 	fi
 	@cd $(DHCPDIR)											\
 		&& ./configure										\
-		&& patch -N -p1 < ../dhcp-4.4.2.patch				\
+		&& patch -f -p1 < ../dhcp-4.4.2.patch				\
 		&& $(MAKE) "CC=$(DHCPCC) -static"					\
 		&& mv $(DHCPDIR)/client/dhclient $(BUILDDIR)/
 

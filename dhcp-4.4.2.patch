@@ -4,8 +4,8 @@
  BINDSUBDIR = ${top_srcdir}/bind
  CC = gcc
  CCDEPMODE = depmode=gcc3
--CFLAGS = -g -O2  -Wall -fno-strict-aliasing -I$(top_srcdir)/includes -I/my_docker_fs/gitRepositories/EmbeddedACCompanion/dhcp-4.4.2/bind/include
-+CFLAGS = -g -O2  -Wall -Werror -fno-strict-aliasing -I$(top_srcdir)/includes -I/my_docker_fs/gitRepositories/EmbeddedACCompanion/dhcp-4.4.2/bind/include
+-CFLAGS = -g -O2  -Wall -Werror -fno-strict-aliasing -I$(top_srcdir)/includes -I/my_docker_fs/gitRepositories/EmbeddedACCompanion/dhcp-4.4.2/bind/include
++CFLAGS = -g -O2  -Wall -fno-strict-aliasing -I$(top_srcdir)/includes -I/my_docker_fs/gitRepositories/EmbeddedACCompanion/dhcp-4.4.2/bind/include
  CPP = gcc -E
  CPPFLAGS = 
  CYGPATH_W = echo

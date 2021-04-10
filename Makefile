@@ -1,24 +1,33 @@
 CURDIR=$(shell pwd)
 CC=$(CURDIR)/YQgcc4.4_for_S5PV210/bin/arm-linux-gcc
 DHCPCC=arm-linux-gnueabihf-gcc
-CFLAGS= -L./lib -I./include -D_LINUX -std=gnu99 -lfont -lm -lfreetype -pthread 
-SRC= $(wildcard *.c)
-CLIENT_OBJ= $(patsubst %.c, %.o, ${SRC})
+CFLAGS= -L$(CURDIR)/lib -I$(CURDIR)/include -D_LINUX -std=gnu99 -lfont -lm -lfreetype -pthread 
+MAINDIR=$(CURDIR)/main
 BUILDDIR=$(CURDIR)/build
 DHCPDIR=$(CURDIR)/dhcp-4.4.2
 
+MAINSRC= $(wildcard $(MAINDIR)/*.c)
+MAINOBJ= $(patsubst %.c, %.o, ${MAINSRC})
+
 .PHONY: all
-all: EmbeddedACCompanion.exe dhclient
+all: PREPARE EmbeddedACCompanion alsa dhclient
+	mv $(MAINDIR)/EmbeddedACCompanion	$(BUILDDIR)/
+	mv $(DHCPDIR)/client/dhclient 			$(BUILDDIR)/
+
+PREPARE:
+	@if [ ! -d $(BUILDDIR) ] ; then						\
+		mkdir  $(BUILDDIR);								\
+	fi
 
 %.o: %.c
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-EmbeddedACCompanion.exe: $(CLIENT_OBJ)
-	$(CC) -o $@ $^ $(CFLAGS)
-	@if [ ! -d $(BUILDDIR) ] ; then						\
-		mkdir  $(BUILDDIR);								\
-	fi
-	mv $@ $(BUILDDIR)/
+EmbeddedACCompanion: $(MAINOBJ)
+	@cd $(MAINDIR)											\
+		&& $(CC) -o $@ $^ $(CFLAGS)
+
+alsa:
+	tar -xf $(CURDIR)/alsa.tar.gz -C $(BUILDDIR)
 
 dhclient:
 	@if [ ! -d $(DHCPDIR) ] ; then						\
@@ -27,12 +36,11 @@ dhclient:
 	@cd $(DHCPDIR)											\
 		&& ./configure										\
 		&& patch -f -p1 < ../dhcp-4.4.2.patch				\
-		&& $(MAKE) "CC=$(DHCPCC) -static"					\
-		&& mv $(DHCPDIR)/client/dhclient $(BUILDDIR)/
+		&& $(MAKE) "CC=$(DHCPCC) -static"
 
 .PHONY: clean
 clean:
-	rm -f $(CLIENT_OBJ)
+	rm -f $(MAINOBJ)
 	rm -rf $(DHCPDIR)
 
 .PHONY: cleanBuild
@@ -47,22 +55,22 @@ cleanAll: clean cleanBuild
 
 #CC=gcc
 #CFLAGS= -I. -D_LINUX -lm  -pthread
-#CLIENT_OBJ = cJSON.o EdpKit.o Main.o ConnectOneNet.o
+#MAINOBJ = cJSON.o EdpKit.o Main.o ConnectOneNet.o
 
 # 如果需要加密功能且系统内已经安装openssl，
 # 取消以下两行注释
 #CFLAGS+=-D_ENCRYPT -lcrypto
-#CLIENT_OBJ += Openssl.o
+#MAINOBJ += Openssl.o
 # gcc *.c -o edp  -I. -D_LINUX -lm  -pthread
 
 #%.o: %.c
 #        $(CC) -c -o $@ $< $(CFLAGS)
 
-#edp: $(CLIENT_OBJ)
+#edp: $(MAINOBJ)
 #        $(CC) -o $@ $^ $(CFLAGS)
 
 #clean:
-#        rm -f edp $(CLIENT_OBJ)
+#        rm -f edp $(MAINOBJ)
 
 
 #arm-linux-gcc  test.c  -o font  -L./ -lfont  -lm

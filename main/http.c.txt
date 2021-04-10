@@ -1,0 +1,150 @@
+#include <stdio.h>
+#include <stdlib.h>		// add
+#include <arpa/inet.h>		// add
+#include <unistd.h>		// add
+#include <sys/types.h>          /* See NOTES */
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h> 
+#include <string.h>
+#include "cJSON.h"
+// #include <netdb.h>
+
+// char* getLocalIP(){
+//     int inet_sock;  
+//     struct ifreq ifr;  
+// char ip[32]={NULL};  
+
+//     inet_sock = socket(AF_INET, SOCK_DGRAM, 0);  
+//     strcpy(ifr.ifr_name, "eth0");  
+//     ioctl(inet_sock, SIOCGIFADDR, &ifr);  
+//     strcpy(ip, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));  
+//     return ip;
+// }
+
+int main(int argc, char const *argv[])
+{
+	//创建一个用来连接阿里云的套接字
+	int sock_fd = socket(AF_INET,SOCK_STREAM,0);
+	if (-1 == sock_fd)
+	{
+		perror("socket 失败");
+		return -1;
+	}
+
+	//绑定自己的IP地址
+	int port = 50001;
+	struct sockaddr_in myaddr;
+	myaddr.sin_family = AF_INET;//IP地址协议
+	myaddr.sin_port = htons(port);//端口号
+	myaddr.sin_addr.s_addr = inet_addr("10.0.2.15");
+	// myaddr.sin_addr.s_addr = inet_addr(getLocalIP());
+
+	int ret = bind(sock_fd,(struct sockaddr *)&myaddr,16);
+	if (-1 == ret)
+	{
+		perror("bind fail");
+		return -1;
+	}else if (0 == ret)
+	{
+		printf("绑定成功！\n");
+	}
+
+	//创建网络API的地址结构体
+	// struct hostent *h;
+	// if((h=gethostbyname("kdwlcxf.market.alicloudapi.com/kdwlcx"))==NULL){
+	// 	fprintf(stderr,"不能得到IP\n");
+	// 	exit(1);
+ 	// }
+	// inet_ntoa(*((struct in_addr *)h->h_addr));
+
+	struct sockaddr_in alicloud_addr;
+	alicloud_addr.sin_family = AF_INET;//IP地址协议
+	alicloud_addr.sin_port = htons(80);//网页的端口号
+	alicloud_addr.sin_addr.s_addr = inet_addr("47.104.94.62");
+	// alicloud_addr.sin_addr.s_addr = *((struct in_addr *)h->h_addr);
+	//进行连接
+	ret = connect(sock_fd,(struct sockaddr *)&alicloud_addr,16);
+	if (-1 == ret)
+	{
+		perror("connect fail");
+		return -1;
+	}else if (0 == ret)
+	{
+		printf("连接成功！\n");
+	}
+
+	//拼接请求报文
+	char buff[1024] = {0};
+	char danhao[20] = {0};
+	printf("请输入快递单号：");
+	scanf("%s",danhao);
+	sprintf(buff,"GET  /composite/queryexpress?number=%s HTTP/1.1\r\n"
+				"Host:qyexpress.market.alicloudapi.com\r\n"
+				"Authorization:APPCODE 0bccb88e30e14222bc8306b742d871b0 \r\n\r\n",danhao);
+
+
+	//发送报文
+	send(sock_fd,buff,1024,0);
+	
+	//获取正文的查询结果
+	char mess[2000] = {0};
+	int flag = 0;
+	while(1){
+		int ret = read(sock_fd,mess+flag,1);
+		if(-1 == ret){
+			perror("读取内容失败");
+			return -1;
+		}
+		flag = flag + ret;
+		if (strstr(mess,"\r\n\r\n") != NULL){
+			break;
+		}
+	}
+	printf("mess = %s\n",mess );
+
+	//分析查询结果，得到正文json数据的有效长度
+	int mess_size =	atoi(strstr(mess,"Content-Length: ")+strlen("Content-Length: "));	//查找字符串里的数据
+	// int mess_size =	1825;	//查找字符串里的数据
+	printf("mess_size =%d\n", mess_size);
+
+	//使用有效长度，获取所有的json数据
+	char mess_buff[10240] = {0};
+	read(sock_fd, mess_buff, mess_size);
+	printf("获取JSON成功\n");
+
+	//CJSON解析
+	cJSON *root = cJSON_Parse(mess_buff);
+	printf("root\n");
+	// cJSON *data = cJSON_GetObjectItem(root, "result");	//L1
+	cJSON *data = cJSON_GetObjectItem(root, "data");	//L1
+	printf("result\n");
+	cJSON *list = cJSON_GetObjectItem(data, "list");	//L2
+	printf("list\n");
+	int array_size = cJSON_GetArraySize(list);
+	printf("array_size = %d\n", array_size);
+	for (int i = 0; i < array_size; ++i){
+		cJSON *array_item = cJSON_GetArrayItem(list,i);
+		cJSON *status = cJSON_GetObjectItem(array_item,"status");
+		cJSON *time = cJSON_GetObjectItem(array_item,"time");
+		printf("status = %s\n", status->valuestring);
+		printf("time = %s\n", time->valuestring);
+	}
+	
+	// cJSON *root = cJSON_Parse(mess_buff);
+	// cJSON *msg = cJSON_GetObjectItem(root,"msg");
+	// cJSON *code = cJSON_GetObjectItem(root,"code");
+	// cJSON *data = cJSON_GetObjectItem(root,"data");
+	// cJSON *city = cJSON_GetObjectItem(data,"city");
+	// cJSON *cityId = cJSON_GetObjectItem(city,"cityId");
+	// cJSON *counname = cJSON_GetObjectItem(city,"counname");
+	// cJSON *ianatimezone = cJSON_GetObjectItem(city,"ianatimezone");
+	// cJSON *name = cJSON_GetObjectItem(city,"name");
+	// cJSON *pname = cJSON_GetObjectItem(city,"pname");
+	// cJSON *secondaryname = cJSON_GetObjectItem(city,"secondaryname");
+	// cJSON *timezone = cJSON_GetObjectItem(city,"timezone");
+
+	return 0;
+}
+
+

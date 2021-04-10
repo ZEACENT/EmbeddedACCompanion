@@ -1,14 +1,14 @@
-.PHONY: all
-all: EmbeddedACCompanion.exe dhclient
-
-CC=arm-linux-gcc
+CURDIR=$(shell pwd)
+CC=$(CURDIR)/YQgcc4.4_for_S5PV210/bin/arm-linux-gcc
 DHCPCC=arm-linux-gnueabihf-gcc
 CFLAGS= -L./lib -I./include -D_LINUX -std=gnu99 -lfont -lm -lfreetype -pthread 
 SRC= $(wildcard *.c)
 CLIENT_OBJ= $(patsubst %.c, %.o, ${SRC})
-CURDIR=$(shell pwd)
 BUILDDIR=$(CURDIR)/build
 DHCPDIR=$(CURDIR)/dhcp-4.4.2
+
+.PHONY: all
+all: EmbeddedACCompanion.exe dhclient
 
 %.o: %.c
 	$(CC) -c -o $@ $< $(CFLAGS)

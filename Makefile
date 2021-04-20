@@ -51,7 +51,7 @@ dhclient: PREPARE
 	mv $(DHCPDIR)/client/dhclient $(INSTALLDIR)/usr/local/bin
 
 .PHONY: ssh
-ssh: PREPARE zlib-1.2.11 openssl-1.0.1t openssh
+ssh: PREPARE zlib-1.2.11 openssl-1.1.1k openssh
 	mv $(SSHDIR)/openssh/sshd			$(INSTALLDIR)/usr/local/sbin
 	
 	mv $(SSHDIR)/openssh/scp			$(INSTALLDIR)/usr/local/bin
@@ -79,12 +79,21 @@ zlib-1.2.11: PREPARE
 		&& $(MAKE)												\
 		&& $(MAKE) install
 
-openssl-1.0.1t: PREPARE
-	@if [ ! -d $(SSHDIR)/openssl-1.0.1t ] ; then				\
-		tar -xf openssl-1.0.1t.tar.gz -C $(SSHDIR);				\
+# openssl-1.0.1t: PREPARE
+# 	@if [ ! -d $(SSHDIR)/openssl-1.0.1t ] ; then				\
+# 		tar -xf openssl-1.0.1t.tar.gz -C $(SSHDIR);				\
+# 	fi
+# 	@cd $(SSHDIR)/openssl-1.0.1t														\
+# 		&& ./Configure --prefix=$(SSHDIR)/install/openssl-1.0.1t os/compiler:$(HFCC)	\
+# 		&& $(MAKE)																		\
+# 		&& $(MAKE) install
+openssl-1.1.1k: PREPARE
+	@if [ ! -d $(SSHDIR)/openssl-1.1.1k ] ; then				\
+		tar -xf openssl-1.1.1k.tar.gz -C $(SSHDIR);				\
 	fi
-	@cd $(SSHDIR)/openssl-1.0.1t														\
-		&& ./Configure --prefix=$(SSHDIR)/install/openssl-1.0.1t os/compiler:$(HFCC)	\
+	@cd $(SSHDIR)/openssl-1.1.1k														\
+		&& ./config no-asm shared --prefix=$(SSHDIR)/install/openssl-1.1.1k shared		\
+		&& patch -f -p1 < $(CURDIR)/openssl-1.1.1k.patch								\
 		&& $(MAKE)																		\
 		&& $(MAKE) install
 
@@ -97,7 +106,7 @@ openssh: PREPARE
 			--host=$(HOST) 											\
 			--with-libs 											\
 			--with-zlib=$(SSHDIR)/install/zlib-1.2.11 				\
-			--with-ssl-dir=$(SSHDIR)/install/openssl-1.0.1t 		\
+			--with-ssl-dir=$(SSHDIR)/install/openssl-1.1.1k 		\
 			--disable-etc-default-login 							\
 			CC=$(HFCC) 												\
 			AR=$(HOST)-ar											\

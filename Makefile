@@ -11,7 +11,8 @@ SSHDIR=$(CURDIR)/ssh
 MAINSRC= $(wildcard $(MAINDIR)/*.c)
 MAINOBJ= $(patsubst %.c, %.o, ${MAINSRC})
 
-.PHONY: all
+.PHONY: all PREPARE EmbeddedACCompanion alsa dhclient ssh zlib-1.2.11 openssl-1.1.1k openssh clean cleanBuild cleanAll
+
 all: PREPARE EmbeddedACCompanion alsa dhclient ssh
 	mv $(MAINDIR)/EmbeddedACCompanion $(INSTALLDIR)/usr/local/bin
 
@@ -47,13 +48,11 @@ dhclient: PREPARE
 	@cd $(DHCPDIR)											\
 		&& ./configure										\
 		&& patch -f -p1 < ../dhcp-4.4.2.patch				\
-		&& $(MAKE) "CC=$(HFCC) -static"
+		&& make "CC=$(HFCC) -static"
 	mv $(DHCPDIR)/client/dhclient $(INSTALLDIR)/usr/local/bin
 
-.PHONY: ssh
 ssh: PREPARE zlib-1.2.11 openssl-1.1.1k openssh
 	mv $(SSHDIR)/openssh/sshd			$(INSTALLDIR)/usr/local/sbin
-	
 	mv $(SSHDIR)/openssh/scp			$(INSTALLDIR)/usr/local/bin
 	mv $(SSHDIR)/openssh/sftp			$(INSTALLDIR)/usr/local/bin
 	mv $(SSHDIR)/openssh/ssh			$(INSTALLDIR)/usr/local/bin
@@ -61,11 +60,9 @@ ssh: PREPARE zlib-1.2.11 openssl-1.1.1k openssh
 	mv $(SSHDIR)/openssh/ssh-agent		$(INSTALLDIR)/usr/local/bin
 	mv $(SSHDIR)/openssh/ssh-keygen		$(INSTALLDIR)/usr/local/bin
 	mv $(SSHDIR)/openssh/ssh-keyscan	$(INSTALLDIR)/usr/local/bin
-
 	mv $(SSHDIR)/openssh/moduli			$(INSTALLDIR)/usr/local/etc
 	mv $(SSHDIR)/openssh/ssh_config		$(INSTALLDIR)/usr/local/etc
 	mv $(SSHDIR)/openssh/sshd_config	$(INSTALLDIR)/usr/local/etc
-
 	mv $(SSHDIR)/openssh/sftp-server	$(INSTALLDIR)/usr/local/libexec
 	mv $(SSHDIR)/openssh/ssh-keysign	$(INSTALLDIR)/usr/local/libexec
 
@@ -74,30 +71,28 @@ zlib-1.2.11: PREPARE
 		tar -xf zlib-1.2.11.tar.gz -C $(SSHDIR);				\
 	fi
 	@cd $(SSHDIR)/zlib-1.2.11									\
-		&& ./configure --prefix=$(SSHDIR)/install/zlib-1.2.11	\
-		&& patch -f -p1 < $(CURDIR)/zlib-1.2.11.patch			\
+		&& prefix=$(SSHDIR)/install/zlib-1.2.11					\
+			CC=$(HFCC)											\
+			CFLAGS="-static -fPIC"								\
+			./configure											\
 		&& $(MAKE)												\
-		&& $(MAKE) install
+		&& $(MAKE) install										\
 
-# openssl-1.0.1t: PREPARE
-# 	@if [ ! -d $(SSHDIR)/openssl-1.0.1t ] ; then				\
-# 		tar -xf openssl-1.0.1t.tar.gz -C $(SSHDIR);				\
-# 	fi
-# 	@cd $(SSHDIR)/openssl-1.0.1t														\
-# 		&& ./Configure --prefix=$(SSHDIR)/install/openssl-1.0.1t os/compiler:$(HFCC)	\
-# 		&& $(MAKE)																		\
-# 		&& $(MAKE) install
 openssl-1.1.1k: PREPARE
 	@if [ ! -d $(SSHDIR)/openssl-1.1.1k ] ; then				\
 		tar -xf openssl-1.1.1k.tar.gz -C $(SSHDIR);				\
 	fi
 	@cd $(SSHDIR)/openssl-1.1.1k														\
-		&& ./config no-asm shared --prefix=$(SSHDIR)/install/openssl-1.1.1k shared		\
-		&& patch -f -p1 < $(CURDIR)/openssl-1.1.1k.patch								\
+		&& ./Configure																	\
+			linux-armv4																	\
+			--cross-compile-prefix=$(HOST)-												\
+			no-asm																		\
+			no-shared																	\
+			--prefix=$(SSHDIR)/install/openssl-1.1.1k									\
 		&& $(MAKE)																		\
 		&& $(MAKE) install
 
-openssh: PREPARE
+openssh: PREPARE zlib-1.2.11 openssl-1.1.1k
 	@if [ ! -d $(SSHDIR)/openssh ] ; then							\
 		tar -xf openssh-SNAP-20210331.tar.gz -C $(SSHDIR);			\
 	fi
@@ -108,20 +103,18 @@ openssh: PREPARE
 			--with-zlib=$(SSHDIR)/install/zlib-1.2.11 				\
 			--with-ssl-dir=$(SSHDIR)/install/openssl-1.1.1k 		\
 			--disable-etc-default-login 							\
+			LDFLAGS="-static -pthread" 								\
 			CC=$(HFCC) 												\
 			AR=$(HOST)-ar											\
 		&& $(MAKE)
 	
 
-.PHONY: clean
 clean:
 	rm -f $(MAINOBJ)
 	rm -rf $(DHCPDIR)
 	rm -rf $(SSHDIR)
 
-.PHONY: cleanBuild
 cleanBuild:
 	rm -rf $(INSTALLDIR)
 
-.PHONY: cleanAll
 cleanAll: clean cleanBuild

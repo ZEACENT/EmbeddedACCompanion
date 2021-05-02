@@ -1,23 +1,35 @@
-##### 智慧电子相册
-
-​	多线程操作系统 （系统运行更加流畅）
-
-​	百叶窗显示特效   （画面整体流畅酷炫）
-
-​	防误触算法（点击无效，只能滑动控制页面的切换）
-
-​	如影随形（软件优化屏幕刷新频率）
-
-​	内存指针的算法
+### For running cross-compiler:
+    apt install lib32z1-dev
 
 
+## BUILD
 
-##### 空调伴侣：
 
-​	通过内存映射绘制开发板界面
+## Install
 
-​	OneNet接口实现远程APP操控与数据同步
+ssh-keygen [*All default*]
 
-​	阿里云接口实现快递查询并与移动端OneNet联动
+vi ./usr/local/etc/sshd_config
+```
+PermitRootLogin yes
+PubkeyAuthentication yes
+AuthorizedKeysFile      /.ssh/authorized_keys
+PasswordAuthentication yes                                                 
+PermitEmptyPasswords yes
+```
 
-​	JSON解析与OneNet数据流处理
+### vi /etc/init.d/rcS
+```
+/usr/local/sbin/sshd -h /.ssh/id_ed25519
+udhcpc
+```
+
+### vi /etc/profile
+```
+export PATH=$PATH:/usr/local/sbin:/usr/local/bin
+```
+
+### vi /etc/passwd
+```
+sshd:x:74:74:Privilege-separated SSH:/var/empty/sshd:/sbin/nologin
+```

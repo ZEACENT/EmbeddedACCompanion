@@ -14,19 +14,20 @@ vi ./usr/local/etc/sshd_config
 PermitRootLogin yes
 PubkeyAuthentication yes
 AuthorizedKeysFile      /.ssh/authorized_keys
-PasswordAuthentication yes                                                 
+PasswordAuthentication yes
 PermitEmptyPasswords yes
 ```
 
 ### vi /etc/init.d/rcS
 ```
+udhcpc -q
 /usr/local/sbin/sshd -h /.ssh/id_ed25519
-udhcpc
 ```
 
 ### vi /etc/profile
 ```
-export PATH=$PATH:/usr/local/sbin:/usr/local/bin
+export PATH=$PATH:/usr/local/sbin
+ntpclient -s -d -c 1 -i 5 -h ntp.aliyun.com 
 ```
 
 ### vi /etc/passwd

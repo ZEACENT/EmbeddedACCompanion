@@ -7,14 +7,19 @@ CFLAGS	= -L$(CURDIR)/lib -I$(CURDIR)/include -D_LINUX -std=gnu99 -lfont -lm -lfr
 INSTALLDIR	=$(CURDIR)/install
 MAINDIR		=$(CURDIR)/main
 SSHDIR		=$(CURDIR)/ssh
+NTPDIR		=$(CURDIR)/ntpclient-2015
 
 MAINSRC= $(wildcard $(MAINDIR)/*.c)
 MAINOBJ= $(patsubst %.c, %.o, ${MAINSRC})
 
-.PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh clean cleanBuild cleanAll
+.PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient clean cleanBuild cleanAll
 
-all: PREPARE embeddedACCompanion alsa ssh
+all: PREPARE embeddedACCompanion alsa ssh ntpclient
 	mv $(MAINDIR)/embeddedACCompanion $(INSTALLDIR)/usr/local/bin
+	mv $(NTPDIR)/ntpclient $(INSTALLDIR)/usr/local/bin
+	$(STRIP) $(INSTALLDIR)/usr/local/sbin/*
+	$(STRIP) $(INSTALLDIR)/usr/local/bin/*
+	tar -czf install.tar.gz install
 
 PREPARE:
 	@if [ ! -d $(INSTALLDIR) ] ; then						\
@@ -82,14 +87,22 @@ openssh: PREPARE zlib-1.2.11
 			LDFLAGS="-static -pthread" 								\
 			CC=$(CC)												\
 		&& $(MAKE)
+
+ntpclient:
+	@if [ ! -d $(NTPDIR) ] ; then									\
+		tar -xf ntpclient_2015_365.tar.gz;							\
+	fi
+	@cd $(NTPDIR)													\
+		&& $(MAKE) CC=$(CC)
 	
 
 clean:
 	rm -rf $(MAINOBJ)
 	rm -rf $(SSHDIR)
+	rm -rf $(NTPDIR)
 
 cleanBuild:
-	rm -rf $(INSTALLDIR)
+	rm -rf $(INSTALLDIR)*
 
 cleanAll: clean cleanBuild
 

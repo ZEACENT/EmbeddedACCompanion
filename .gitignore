@@ -2,5 +2,7 @@
 .vscode/
 dhcp-4.4.2/
 install/
+install.tar.gz
 main/*.o
 ssh/
+ntpclient-2015/

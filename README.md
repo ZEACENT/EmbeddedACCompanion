@@ -20,17 +20,19 @@ PermitEmptyPasswords yes
 
 ### vi /etc/init.d/rcS
 ```
-udhcpc -q
-/usr/local/sbin/sshd -h /.ssh/id_ed25519
-```
-
-### vi /etc/profile
-```
-export PATH=$PATH:/usr/local/sbin
-ntpclient -s -d -c 1 -i 5 -h ntp.aliyun.com 
+udhcpc -q &
+ntpclient -s -d -c 1 -i 5 -h ntp.aliyun.com &
+/usr/local/sbin/sshd -h /.ssh/id_ed25519 &
+embeddedACCompanion &
 ```
 
 ### vi /etc/passwd
 ```
 sshd:x:74:74:Privilege-separated SSH:/var/empty/sshd:/sbin/nologin
+```
+
+### pppoe
+```
+pppoe-setup
+pppoe-start
 ```

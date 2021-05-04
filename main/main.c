@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <common.h>
+#include <errno.h>
 #include "lcd.h"
 #include "font.h"
 #include "EdpKit.h"
@@ -26,8 +27,7 @@ static unsigned int temp = 26;
 unsigned long touch_count_old;
 static char rec_string_buf[1024];
 
-#define MY_PORT     50001
-#define MY_IPV4     "127.0.0.1"
+#define MY_PORT     0
 #define ALI_PORT    80
 #define ALI_IPV4    "47.104.94.62"
 #define TP_PATH     "/dev/event0"
@@ -35,10 +35,14 @@ static char rec_string_buf[1024];
 #define BMP_PATH    "/Cover"
 #define FONT_PATH   "/OPPOSans-R.ttf"
 #define FONT_SIZE   100
-#define FPS         60
+#define MINI_F_SIZE 40
+#define FPS         30
+// #define NTP_HOST    "ntp.aliyun.com"
+#define LOG_PATH    "/main.log"
 
 static void* touch_screen_thread(void* arg){
     while (1) {
+        usleep((double)1/FPS * 1000 * 1000);
         get_xy(TP_PATH);
     }
 }
@@ -78,9 +82,9 @@ static void* one_net_rece_thread(void* arg){
 static void* one_net_send_thread(void* arg){
     char buf[20] = {0};
     while (1){
+        sleep(3);
         memset(buf ,0 ,sizeof(buf));
         OneNet_SendData(buf, "Temp", temp);
-        sleep(3);
     }
 }
 
@@ -92,9 +96,11 @@ static inline void adjustTemp(unsigned int* temp, int num){
 
 static void* local_ctrl_thread(void* arg){
     while(1){
-        if(touch_count_old != touch_count){
+        usleep((double)1/FPS * 1000 * 1000);
+        if (touch_count_old != touch_count) {
             touch_count_old = touch_count;
-        }else{
+        }
+        else {
             continue;
         }
         if(ts_x>100 && ts_x<300 && ts_y>70 && ts_y<170){
@@ -118,31 +124,53 @@ static void* local_ctrl_thread(void* arg){
     }
 }
 
+static void* flush_log_thread(void* arg) {
+    while (1) {
+        sleep(1);
+        fflush(stdout);
+    }
+}
+
 int main(int argc, char **argv) {
     int ali_sock_fd;
     struct sockaddr_in my_addr;
     struct sockaddr_in alicloud_addr;
     struct LcdDevice* lcd = NULL;
-    font* my_font   = NULL;
-    bitmap* bmAC    = NULL;
-    bitmap* bmTmp   = NULL;
-    bitmap* bmAdd   = NULL;
-    bitmap* bmSub   = NULL;
-    char buff[2048] = {0};
-    char str[4];    //空调温度临时字串
+    font* my_font      = NULL;
+    font* my_mini_font = NULL;
+    bitmap* bmAC       = NULL;
+    bitmap* bmTmp      = NULL;
+    bitmap* bmAdd      = NULL;
+    bitmap* bmSub      = NULL;
+    bitmap* bmVoice    = NULL;
+    char buff[2048]    = {0};
+    FILE *log_stream   = NULL;
 
     int PicNum = 1;
     int color = 0x00ff0000;    //如影随形颜色
     int r = 30;    //半径
-    char bufAC[] = "空调";
-    char *bufTmp = "26C";
-    char bufAdd[] = "+";
-    char bufSub[] = "-";
+    const char bufAC[]    = "空调";
+    char bufTmp[4]        = "26C";
+    const char bufAdd[]   = "+";
+    const char bufSub[]   = "-";
+    const char bufVoice[] = "V";
 
     pthread_t oneNetReceThread;                             //onenetReacv
     pthread_t oneNetSendThread;                             //onenetSend
     pthread_t touchScreenThread;                            //touchscreen
     pthread_t localCtrlTempThread;                          //ctrl temp
+    pthread_t flushLogThread;                               //flush log
+
+    // redirect stdout for log
+    if (NULL == freopen(LOG_PATH, "w", stdout)) {
+        printf("Failed to redirect stdout log to file\n");
+    }
+    if (NULL == freopen(LOG_PATH, "w", stderr)) {
+        printf("Failed to redirect stderr log to file\n");
+    }
+
+    // First, sync time
+    // system("ntpclient -s -d -c 1 -i 5 -h "NTP_HOST);
 
 #if !BAN_ONE_NET
     if(OneNet_Init())
@@ -157,6 +185,8 @@ int main(int argc, char **argv) {
         printf("Failed to create touchScreenThread\n");
     if(pthread_create(&localCtrlTempThread, NULL, local_ctrl_thread, NULL))
         printf("Failed to create localCtrlTempThread\n");
+    if(pthread_create(&flushLogThread, NULL, flush_log_thread, NULL))
+        printf("Failed to create flushLogThread\n");
 
 #if !BAN_ALI_CLD
     if(-1 == (ali_sock_fd = socket(AF_INET, SOCK_STREAM, 0))){
@@ -166,7 +196,7 @@ int main(int argc, char **argv) {
     memset(&my_addr, 0, sizeof my_addr);
     my_addr.sin_family      = AF_INET;
     my_addr.sin_port        = htons(MY_PORT);
-    my_addr.sin_addr.s_addr = inet_addr(MY_IPV4);
+    my_addr.sin_addr.s_addr = INADDR_ANY;
     if(bind(ali_sock_fd, (struct sockaddr *)&my_addr, sizeof my_addr)){
         printf("Failed to bind ali_sock_fd\n");
         return -1;
@@ -176,7 +206,7 @@ int main(int argc, char **argv) {
     alicloud_addr.sin_port          = htons(ALI_PORT);
     alicloud_addr.sin_addr.s_addr   = inet_addr(ALI_IPV4);
     if(connect(ali_sock_fd, (struct sockaddr *)&alicloud_addr, sizeof alicloud_addr)){
-        printf("Failed to connect ali_sock_fd\n");
+        printf("Failed to connect ali_sock_fd: %s\n", strerror(errno));
         return -1;
     }
 #endif
@@ -193,31 +223,36 @@ int main(int argc, char **argv) {
         printf("draw cover successfully\n");
 #endif
 
-    if(!(my_font = fontLoad(FONT_PATH)))
+    if(!(my_font = fontLoad(FONT_PATH)) || !(my_mini_font = fontLoad(FONT_PATH)))
         printf("Failed to fontLoad\n");
 #if DEBUG
         printf("fontLoad successfully\n");
 #endif
 
     fontSetSize(my_font, FONT_SIZE);
+    fontSetSize(my_mini_font, MINI_F_SIZE);
     bmAC    = createBitmapWithInit(200, 100, 4, getColor(255,0,0,0));
     bmTmp   = createBitmapWithInit(200, 100, 4, getColor(255,0,0,0));
     bmAdd   = createBitmapWithInit(200, 100, 4, getColor(255,0,0,0));
     bmSub   = createBitmapWithInit(200, 100, 4, getColor(255,0,0,0));
+    bmVoice = createBitmapWithInit(50, 50, 4, getColor(255,0,0,0));
     fontPrint(my_font, bmAC, 0, 0, bufAC, getColor(0,0,255,0), 0);
     fontPrint(my_font, bmTmp, 0, 0, bufTmp, getColor(0,0,255,0), 0);
     fontPrint(my_font, bmAdd, 50, 0, bufAdd, getColor(0,0,255,0), 0);
     fontPrint(my_font, bmSub, 50, 0, bufSub, getColor(0,0,255,0), 0);
+    fontPrint(my_mini_font, bmVoice, 0, 0, bufVoice, getColor(0,0,255,0), 0);
     show_font_to_lcd(lcd->mp, 100, 70, bmAC);
     show_font_to_lcd(lcd->mp, 100, 310, bmTmp);
     show_font_to_lcd(lcd->mp, 500, 70, bmAdd);
     show_font_to_lcd(lcd->mp, 500, 310, bmSub);
+    show_font_to_lcd(lcd->mp, 375, 225, bmVoice);
     destroyBitmap(bmAC);
     destroyBitmap(bmTmp);
     destroyBitmap(bmAdd);
     destroyBitmap(bmSub);
+    destroyBitmap(bmVoice);
 
-    while (1){
+    while (1) {
 #if !BAN_ONE_NET
         if('1' == (rec_string_buf)[0] && 1 == strlen(rec_string_buf)){    //远程开关
             ACSwitch = 1;
@@ -285,37 +320,50 @@ int main(int argc, char **argv) {
         }
 #endif
         // Draw Screen
-        sprintf(str, "%d" , temp);
-        strcat (str, "C");    //附加单位
-        bufTmp = str;
+        sprintf(bufTmp, "%d" , temp);
+        strcat (bufTmp, "C");    //Add unit
         if(ACSwitch){    //ON Green
-            bitmap *bmAC1 = createBitmapWithInit(200,100,4,getColor(0,255,0,0));
-            bitmap *bmTmp1 = createBitmapWithInit(200,100,4,getColor(0,255,0,0));
-            bitmap *bmAdd1 = createBitmapWithInit(200,100,4,getColor(0,255,0,0));
-            bitmap *bmSub1 = createBitmapWithInit(200,100,4,getColor(0,255,0,0));
+            bitmap *bmAC1    = createBitmapWithInit(200,100,4,getColor(0,255,0,0));
+            bitmap *bmTmp1   = createBitmapWithInit(200,100,4,getColor(0,255,0,0));
+            bitmap *bmAdd1   = createBitmapWithInit(200,100,4,getColor(0,255,0,0));
+            bitmap *bmSub1   = createBitmapWithInit(200,100,4,getColor(0,255,0,0));
+            bitmap *bmVoice1 = createBitmapWithInit(50,50,4,getColor(0,255,0,0));
             fontPrint(my_font, bmAC1, 0, 0, bufAC, getColor(0,0,255,0), 0);
             fontPrint(my_font, bmTmp1, 0, 0, bufTmp, getColor(0,0,255,0), 0);
             fontPrint(my_font, bmAdd1, 50, 0, bufAdd, getColor(0,0,255,0), 0);
             fontPrint(my_font, bmSub1, 50, 0, bufSub, getColor(0,0,255,0), 0);
+            fontPrint(my_mini_font, bmVoice1, 0, 0, bufVoice, getColor(0,0,255,0), 0);
             show_font_to_lcd(lcd->mp, 100, 70, bmAC1);
             show_font_to_lcd(lcd->mp, 100, 310, bmTmp1);
             show_font_to_lcd(lcd->mp, 500, 70, bmAdd1);
             show_font_to_lcd(lcd->mp, 500, 310, bmSub1);
-            destroyBitmap(bmAC1);destroyBitmap(bmTmp1);destroyBitmap(bmAdd1);destroyBitmap(bmSub1);
+            show_font_to_lcd(lcd->mp, 375, 225, bmVoice1);
+            destroyBitmap(bmAC1);
+            destroyBitmap(bmTmp1);
+            destroyBitmap(bmAdd1);
+            destroyBitmap(bmSub1);
+            destroyBitmap(bmVoice1);
         }else{            //OFF Red
             bitmap *bmAC0 = createBitmapWithInit(200,100,4,getColor(255,0,0,0));
             bitmap *bmTmp0 = createBitmapWithInit(200,100,4,getColor(255,0,0,0));
             bitmap *bmAdd0 = createBitmapWithInit(200,100,4,getColor(255,0,0,0));
             bitmap *bmSub0 = createBitmapWithInit(200,100,4,getColor(255,0,0,0));
+            bitmap *bmVoice0 = createBitmapWithInit(50,50,4,getColor(255,0,0,0));
             fontPrint(my_font, bmAC0, 0, 0, bufAC, getColor(0,0,255,0), 0);
             fontPrint(my_font, bmTmp0, 0, 0, bufTmp, getColor(0,0,255,0), 0);
             fontPrint(my_font, bmAdd0, 50, 0, bufAdd, getColor(0,0,255,0), 0);
             fontPrint(my_font, bmSub0, 50, 0, bufSub, getColor(0,0,255,0), 0);
+            fontPrint(my_mini_font, bmVoice0, 0, 0, bufVoice, getColor(0,0,255,0), 0);
             show_font_to_lcd(lcd->mp, 100, 70, bmAC0);
             show_font_to_lcd(lcd->mp, 100, 310, bmTmp0);
             show_font_to_lcd(lcd->mp, 500, 70, bmAdd0);
             show_font_to_lcd(lcd->mp, 500, 310, bmSub0);
-            destroyBitmap(bmAC0);destroyBitmap(bmTmp0);destroyBitmap(bmAdd0);destroyBitmap(bmSub0);
+            show_font_to_lcd(lcd->mp, 375, 225, bmVoice0);
+            destroyBitmap(bmAC0);
+            destroyBitmap(bmTmp0);
+            destroyBitmap(bmAdd0);
+            destroyBitmap(bmSub0);
+            destroyBitmap(bmVoice0);
         }
 #if 0
         // lcd_draw_bmp(0, 0, "Cover");    //刷新背景
@@ -330,7 +378,7 @@ int main(int argc, char **argv) {
         //     }
         // }
 #endif
-        usleep((double)1/FPS * 1000);
+        usleep((double)1/FPS * 1000 * 1000);
     }
     
     TcpClientClose();
@@ -338,7 +386,9 @@ int main(int argc, char **argv) {
     pthread_join(oneNetSendThread, NULL);
     pthread_join(touchScreenThread, NULL);
     pthread_join(localCtrlTempThread, NULL);
+    pthread_join(flushLogThread, NULL);
     lcd_close();
+    fclose(log_stream);
 
     return 0;
 }

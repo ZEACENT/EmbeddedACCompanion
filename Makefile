@@ -8,17 +8,19 @@ INSTALLDIR	=$(CURDIR)/install
 MAINDIR		=$(CURDIR)/main
 SSHDIR		=$(CURDIR)/ssh
 NTPDIR		=$(CURDIR)/ntpclient-2015
+PPPDIR		=$(CURDIR)/ppp
 
 MAINSRC= $(wildcard $(MAINDIR)/*.c)
 MAINOBJ= $(patsubst %.c, %.o, ${MAINSRC})
 
-.PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient clean cleanBuild cleanAll
+.PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient ppp rp-pppoe clean cleanBuild cleanAll
 
-all: PREPARE embeddedACCompanion alsa ssh ntpclient
+all: PREPARE embeddedACCompanion alsa ssh ntpclient ppp rp-pppoe
 	mv $(MAINDIR)/embeddedACCompanion $(INSTALLDIR)/usr/local/bin
-	mv $(NTPDIR)/ntpclient $(INSTALLDIR)/usr/local/bin
-	$(STRIP) $(INSTALLDIR)/usr/local/sbin/*
-	$(STRIP) $(INSTALLDIR)/usr/local/bin/*
+	mv $(NTPDIR)/ntpclient            $(INSTALLDIR)/usr/local/bin
+	mv $(PPPDIR)/ppp-2.4.7/pppd/pppd  $(INSTALLDIR)/usr/local/bin
+	-$(STRIP) $(INSTALLDIR)/usr/local/sbin/*
+	-$(STRIP) $(INSTALLDIR)/usr/local/bin/*
 	tar -czf install.tar.gz install
 
 PREPARE:
@@ -34,6 +36,7 @@ PREPARE:
 	@if [ ! -d $(SSHDIR) ] ; then							\
 		mkdir -p $(SSHDIR);									\
 		mkdir -p $(SSHDIR)/install;							\
+		mkdir -p $(PPPDIR);									\
 	fi
 
 %.o: %.c
@@ -41,12 +44,12 @@ PREPARE:
 
 embeddedACCompanion: $(MAINOBJ)
 	@cd $(MAINDIR)											\
-		&& $(CC) -o $@ $^ $(CFLAGS)
+		&& $(CC) -o $@ $^ $(CFLAGS) -static -fPIC
 
 alsa: PREPARE
 	tar -xf $(CURDIR)/alsa.tar.gz -C $(INSTALLDIR)
 
-ssh: PREPARE openssh
+ssh: openssh
 	mv $(SSHDIR)/openssh-8.3p1/sshd			$(INSTALLDIR)/usr/local/sbin
 	mv $(SSHDIR)/openssh-8.3p1/scp			$(INSTALLDIR)/usr/local/bin
 	mv $(SSHDIR)/openssh-8.3p1/sftp			$(INSTALLDIR)/usr/local/bin
@@ -71,9 +74,9 @@ zlib-1.2.11: PREPARE
 			CFLAGS="-static -fPIC"								\
 			./configure											\
 		&& $(MAKE)												\
-		&& $(MAKE) install										\
+		&& $(MAKE) install
 
-openssh: PREPARE zlib-1.2.11
+openssh: zlib-1.2.11
 	@if [ ! -d $(SSHDIR)/openssh-8.3p1 ] ; then						\
 		tar -xf openssh-8.3p1.tar.gz -C $(SSHDIR);					\
 	fi
@@ -94,12 +97,32 @@ ntpclient:
 	fi
 	@cd $(NTPDIR)													\
 		&& $(MAKE) CC=$(CC)
-	
+
+ppp: PREPARE
+	@if [ ! -d $(PPPDIR)/ppp-2.4.7 ] ; then							\
+		tar -xf ppp-2.4.7.tar.gz -C $(PPPDIR);						\
+	fi
+	@cd $(PPPDIR)/ppp-2.4.7											\
+		&& ./configure												\
+		&& $(MAKE) CC=$(CC)
+
+rp-pppoe: PREPARE
+	@if [ ! -d $(PPPDIR)/rp-pppoe-3.14 ] ; then						\
+		tar -xf rp-pppoe-3.14.tar.gz -C $(PPPDIR);					\
+	fi
+	@cd $(PPPDIR)/rp-pppoe-3.14/src									\
+		&& ./configure												\
+			--host=$(HOST) 											\
+			CC=$(CC)												\
+		&& $(MAKE)													\
+		&& $(MAKE) install exec_prefix=$(INSTALLDIR)/usr/local
+
 
 clean:
 	rm -rf $(MAINOBJ)
 	rm -rf $(SSHDIR)
 	rm -rf $(NTPDIR)
+	rm -rf $(PPPDIR)
 
 cleanBuild:
 	rm -rf $(INSTALLDIR)*

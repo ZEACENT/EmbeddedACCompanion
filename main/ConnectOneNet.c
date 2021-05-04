@@ -138,7 +138,7 @@ void OneNet_SendData(char *buf,char *buf1,char number)
 	{
 		printf("send send_pkg->data error!\n");
 	}else{
-		printf("send send_pkg->data[%d] success!\n" ,number);
+		printf("send send_pkg->data[%d] success!\n", number);
 		return ;
 	}
 	

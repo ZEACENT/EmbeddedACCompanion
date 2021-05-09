@@ -36,8 +36,8 @@ extern int sockfd;
 #define SERVERPORT  	876							//这两个是中移物联网EDP协议登录地址(IP+PORT)
 #define SERVERIP  "183.230.40.39"					//这两个不可更改
 
-#define DEVICE_ID  "632339932"						//用户根据自己的实际情况决定
-#define AUTH_KEY   "Vu8o99rROrIWyWbV5gJ9qx90E0A="	//用户根据自己的实际情况决定
+// #define DEVICE_ID  "632339932"						//用户根据自己的实际情况决定
+// #define AUTH_KEY   "Vu8o99rROrIWyWbV5gJ9qx90E0A="	//用户根据自己的实际情况决定
 
 //函数声明
 //==========================================================

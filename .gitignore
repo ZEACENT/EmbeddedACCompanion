@@ -6,3 +6,6 @@ install.tar.gz
 main/*.o
 ssh/
 ntpclient-2015/
+ppp/
+alsa-lib-1.2.3.2/
+alsa-utils-1.2.3/

@@ -169,9 +169,6 @@ int main(int argc, char **argv) {
         printf("Failed to redirect stderr log to file\n");
     }
 
-    // First, sync time
-    // system("ntpclient -s -d -c 1 -i 5 -h "NTP_HOST);
-
 #if !BAN_ONE_NET
     if(OneNet_Init())
         printf("Failed to init OneNet\n");
@@ -269,7 +266,7 @@ int main(int argc, char **argv) {
             "Authorization:APPCODE 0bccb88e30e14222bc8306b742d871b0 \r\n\r\n", rec_string_buf);
             printf("ExpNum: %s\n", rec_string_buf);
             //发送报文
-            send(ali_sock_fd, buff, 1024, 0);
+            send(ali_sock_fd, buff, strlen(buff), 0);
             sleep(2);
             printf("send ok\n");
             //获取正文的查询结果 获取JSON长度

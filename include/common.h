@@ -7,6 +7,10 @@
 #define PRINT_X_Y       0
 #define LOCAL_CTRL      0
 
+// OneNET device
+#define DEVICE_ID  "632339932"
+#define AUTH_KEY   "Vu8o99rROrIWyWbV5gJ9qx90E0A="
+
 /*---------------------------------------------------------------------------*/
 /* Type Definition Macros                                                    */
 /*---------------------------------------------------------------------------*/

@@ -1,0 +1,9 @@
+--- ./alsa/alsa-utils-1.2.3/alsactl/alsactl.h.bk	2021-05-09 08:45:12.032684853 +0000
++++ ./alsa/alsa-utils-1.2.3/alsactl/alsactl.h	2021-05-09 08:45:27.044760960 +0000
+@@ -61,3 +61,5 @@ static inline int hextodigit(int c)
+ }
+ 
+ #define ARRAY_SIZE(a) (sizeof (a) / sizeof (a)[0])
++
++#define SCHED_IDLE              5
+\ No newline at end of file

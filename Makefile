@@ -6,6 +6,7 @@ HOST	=arm-linux-gnueabi
 CFLAGS	= -L$(CURDIR)/lib -I$(CURDIR)/include -D_LINUX -std=gnu99 -lfont -lm -lfreetype -pthread 
 INSTALLDIR	=$(CURDIR)/install
 MAINDIR		=$(CURDIR)/main
+ALSADIR		=$(CURDIR)/alsa
 SSHDIR		=$(CURDIR)/ssh
 NTPDIR		=$(CURDIR)/ntpclient-2015
 PPPDIR		=$(CURDIR)/ppp
@@ -13,9 +14,9 @@ PPPDIR		=$(CURDIR)/ppp
 MAINSRC= $(wildcard $(MAINDIR)/*.c)
 MAINOBJ= $(patsubst %.c, %.o, ${MAINSRC})
 
-.PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient ppp rp-pppoe clean cleanBuild cleanAll
+.PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient ppp rp-pppoe v2ray clean cleanBuild cleanAll
 
-all: PREPARE embeddedACCompanion alsa ssh ntpclient ppp rp-pppoe
+all: PREPARE embeddedACCompanion alsa ssh ntpclient ppp rp-pppoe v2ray
 	mv $(MAINDIR)/embeddedACCompanion $(INSTALLDIR)/usr/local/bin
 	mv $(NTPDIR)/ntpclient            $(INSTALLDIR)/usr/local/bin
 	mv $(PPPDIR)/ppp-2.4.7/pppd/pppd  $(INSTALLDIR)/usr/local/bin
@@ -24,20 +25,18 @@ all: PREPARE embeddedACCompanion alsa ssh ntpclient ppp rp-pppoe
 	tar -czf install.tar.gz install
 
 PREPARE:
-	@if [ ! -d $(INSTALLDIR) ] ; then						\
-		mkdir -p  $(INSTALLDIR);							\
-		mkdir -p  $(INSTALLDIR)/usr/local/bin;				\
-		mkdir -p  $(INSTALLDIR)/usr/local/sbin;				\
-		mkdir -p  $(INSTALLDIR)/usr/local/etc;				\
-		mkdir -p  $(INSTALLDIR)/usr/local/libexec;			\
-		mkdir -p  $(INSTALLDIR)/var/run;					\
-		mkdir -p  $(INSTALLDIR)/var/empty;					\
-	fi
-	@if [ ! -d $(SSHDIR) ] ; then							\
-		mkdir -p $(SSHDIR);									\
-		mkdir -p $(SSHDIR)/install;							\
-		mkdir -p $(PPPDIR);									\
-	fi
+		mkdir -p  $(INSTALLDIR)/usr/local/bin
+		mkdir -p  $(INSTALLDIR)/usr/local/alsa
+		mkdir -p  $(INSTALLDIR)/usr/local/v2ray
+		mkdir -p  $(INSTALLDIR)/usr/local/sbin
+		mkdir -p  $(INSTALLDIR)/usr/local/etc
+		mkdir -p  $(INSTALLDIR)/usr/local/libexec
+		mkdir -p  $(INSTALLDIR)/var/run
+		mkdir -p  $(INSTALLDIR)/var/empty
+
+		mkdir -p $(ALSADIR)
+		mkdir -p $(SSHDIR)/install
+		mkdir -p $(PPPDIR)
 
 %.o: %.c
 	$(CC) -c -o $@ $< $(CFLAGS)
@@ -47,7 +46,32 @@ embeddedACCompanion: $(MAINOBJ)
 		&& $(CC) -o $@ $^ $(CFLAGS) -static -fPIC
 
 alsa: PREPARE
-	tar -xf $(CURDIR)/alsa.tar.gz -C $(INSTALLDIR)
+	@if [ ! -d $(ALSADIR)/alsa-lib-1.2.3.2 ] ; then							\
+		tar -xf $(CURDIR)/alsa-lib-1.2.3.2.tar.bz2 -C $(ALSADIR);			\
+	fi
+	@if [ ! -d $(ALSADIR)/alsa-utils-1.2.3 ] ; then							\
+		tar -xf $(CURDIR)/alsa-utils-1.2.3.tar.bz2 -C $(ALSADIR);			\
+		patch -p1 < alsa-utils-1.2.3.patch;									\
+	fi
+	@cd $(ALSADIR)/alsa-lib-1.2.3.2											\
+		&&	CC=$(CC)														\
+			./configure														\
+				--host=$(HOST)												\
+				--prefix=$(INSTALLDIR)/usr/local/alsa						\
+		&& $(MAKE)															\
+		&& $(MAKE) install
+	@cd $(ALSADIR)/alsa-utils-1.2.3											\
+		&&	CC=$(CC)														\
+			./configure														\
+				--host=$(HOST)												\
+				--prefix=$(INSTALLDIR)/usr/local/alsa						\
+				--with-alsa-inc-prefix=$(INSTALLDIR)/usr/local/alsa/include	\
+				--with-alsa-prefix=$(INSTALLDIR)/usr/local/alsa/lib			\
+				--disable-alsamixer											\
+				--disable-xmlto												\
+				--disable-nls												\
+		&& $(MAKE)															\
+		&& $(MAKE) install
 
 ssh: openssh
 	mv $(SSHDIR)/openssh-8.3p1/sshd			$(INSTALLDIR)/usr/local/sbin
@@ -117,9 +141,13 @@ rp-pppoe: PREPARE
 		&& $(MAKE)													\
 		&& $(MAKE) install exec_prefix=$(INSTALLDIR)/usr/local
 
+v2ray: PREPARE
+	tar -xf v2ray-custom-arm-linux-20210508-152307.tar.gz -C $(INSTALLDIR)/usr/local/v2ray
+
 
 clean:
 	rm -rf $(MAINOBJ)
+	rm -rf $(ALSADIR)
 	rm -rf $(SSHDIR)
 	rm -rf $(NTPDIR)
 	rm -rf $(PPPDIR)

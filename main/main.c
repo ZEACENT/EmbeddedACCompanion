@@ -10,6 +10,7 @@
 #include "font.h"
 #include "EdpKit.h"
 #include "ConnectOneNet.h"
+#include <sqlite3.h>
 
 extern int ts_x;
 extern int ts_y;
@@ -37,8 +38,10 @@ static char rec_string_buf[1024];
 #define FONT_SIZE   100
 #define MINI_F_SIZE 40
 #define FPS         30
-// #define NTP_HOST    "ntp.aliyun.com"
 #define LOG_PATH    "/main.log"
+#define AITALK_FILE "aitalk.wav"
+#define AITALK_RES  "/aitalk_result"
+#define AITALK_CONF 85
 
 static void* touch_screen_thread(void* arg){
     while (1) {
@@ -94,7 +97,16 @@ static inline void adjustTemp(unsigned int* temp, int num){
     *temp = *temp>36?36:*temp;
 }
 
+static void parse_aitalk_token(FILE *aitalk_res_stream){
+    return;
+}
+
 static void* local_ctrl_thread(void* arg){
+    FILE *aitalk_res_stream     = NULL;
+    char aitalk_res_buf[1024]   = {0};
+    char *confidence_ptr        = NULL;
+    int confidence              = 0;
+
     while(1){
         usleep((double)1/FPS * 1000 * 1000);
         if (touch_count_old != touch_count) {
@@ -121,6 +133,29 @@ static void* local_ctrl_thread(void* arg){
             printf("temp del %3d : %-3d\n", ts_x, ts_y);
 #endif
         }
+        if(ts_x>375 && ts_x<425 && ts_y>225 && ts_y<275){
+            system("arecord -d3 -c1 -r16000 -twav -fS16_LE "AITALK_FILE);
+            system("asr_offline_sample > "AITALK_RES);
+            if (NULL == (aitalk_res_stream = fopen(AITALK_RES, "r"))) {
+                printf("Open aitalk result file fail\n");
+            }
+            else {
+                while (fgets(aitalk_res_buf, sizeof(aitalk_res_buf), aitalk_res_stream))
+                {
+                    if (confidence_ptr = strstr(aitalk_res_buf, "<confidence>")) {
+                        confidence_ptr += strlen("<confidence>");
+                        confidence = atoi(confidence_ptr);
+                        if (AITALK_CONF < confidence) {
+                            parse_aitalk_token(aitalk_res_stream);
+                        }
+                        else {
+                            printf("Can not match instruction\n");
+                        }
+                    }
+                }
+                fclose(aitalk_res_stream);
+            }
+        }
     }
 }
 
@@ -136,15 +171,17 @@ int main(int argc, char **argv) {
     struct sockaddr_in my_addr;
     struct sockaddr_in alicloud_addr;
     struct LcdDevice* lcd = NULL;
-    font* my_font      = NULL;
-    font* my_mini_font = NULL;
-    bitmap* bmAC       = NULL;
-    bitmap* bmTmp      = NULL;
-    bitmap* bmAdd      = NULL;
-    bitmap* bmSub      = NULL;
-    bitmap* bmVoice    = NULL;
-    char buff[2048]    = {0};
-    FILE *log_stream   = NULL;
+    font* my_font               = NULL;
+    font* my_mini_font          = NULL;
+    bitmap* bmAC                = NULL;
+    bitmap* bmTmp               = NULL;
+    bitmap* bmAdd               = NULL;
+    bitmap* bmSub               = NULL;
+    bitmap* bmVoice             = NULL;
+    char buff[2048]             = {0};
+    FILE *log_stream            = NULL;
+    sqlite3 *db                 = NULL;
+    int ret;
 
     int PicNum = 1;
     int color = 0x00ff0000;    //如影随形颜色
@@ -153,7 +190,8 @@ int main(int argc, char **argv) {
     char bufTmp[4]        = "26C";
     const char bufAdd[]   = "+";
     const char bufSub[]   = "-";
-    const char bufVoice[] = "V";
+    // const char bufVoice[] = "V";
+    const char bufVoice[] = "";
 
     pthread_t oneNetReceThread;                             //onenetReacv
     pthread_t oneNetSendThread;                             //onenetSend
@@ -168,6 +206,11 @@ int main(int argc, char **argv) {
     if (NULL == freopen(LOG_PATH, "w", stderr)) {
         printf("Failed to redirect stderr log to file\n");
     }
+
+    // init db
+    sqlite3_initialize();
+    ret = sqlite3_open_v2("test.db", &db, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL);
+    printf("DB init: %d", ret);
 
 #if !BAN_ONE_NET
     if(OneNet_Init())
@@ -273,12 +316,12 @@ int main(int argc, char **argv) {
             char mess[2000] = {0};
             int flag = 0;
             while(1){
-                int ret = read(ali_sock_fd, mess+flag, 1);
-                if(-1 == ret){
+                int read_rc = read(ali_sock_fd, mess+flag, 1);
+                if(-1 == read_rc){
                     perror("读取内容失败");
                     return -1;
                 }
-                flag = flag + ret;
+                flag = flag + read_rc;
                 if (strstr(mess, "\r\n\r\n") != NULL){
                     break;
                 }

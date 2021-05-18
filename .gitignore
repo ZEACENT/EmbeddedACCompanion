@@ -4,8 +4,12 @@ dhcp-4.4.2/
 install/
 install.tar.gz
 main/*.o
+main/embeddedACCompanion
 ssh/
 ntpclient-2015/
 ppp/
 alsa-lib-1.2.3.2/
 alsa-utils-1.2.3/
+sqlite-autoconf-3350500/
+aitalk/
+start-upgrade

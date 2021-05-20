@@ -22,7 +22,7 @@ MAINOBJ= $(patsubst %.c, %.o, ${MAINSRC})
 
 .PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient ppp rp-pppoe v2ray sqlite iptables kernel clean cleanBuild cleanAll
 
-all: PREPARE embeddedACCompanion alsa ssh ntpclient ppp rp-pppoe v2ray sqlite
+all: PREPARE embeddedACCompanion alsa ssh ntpclient ppp rp-pppoe v2ray sqlite iptables
 	cp $(MAINDIR)/embeddedACCompanion $(INSTALLDIR)/usr/local/bin
 	cp $(NTPDIR)/ntpclient            $(INSTALLDIR)/usr/local/bin
 	cp $(PPPDIR)/ppp-2.4.7/pppd/pppd  $(INSTALLDIR)/usr/local/bin
@@ -30,6 +30,7 @@ all: PREPARE embeddedACCompanion alsa ssh ntpclient ppp rp-pppoe v2ray sqlite
 	-$(STRIP) $(INSTALLDIR)/usr/local/bin/*
 	-$(STRIP) $(INSTALLDIR)/usr/local/alsa/bin/*
 	-$(STRIP) $(INSTALLDIR)/usr/local/sqlite/bin/*
+	-$(STRIP) $(INSTALLDIR)/usr/local/iptables/sbin/*
 	tar -czf install.tar.gz install
 
 PREPARE:
@@ -40,6 +41,7 @@ PREPARE:
 		mkdir -p  $(INSTALLDIR)/usr/local/etc
 		mkdir -p  $(INSTALLDIR)/usr/local/libexec
 		mkdir -p  $(INSTALLDIR)/usr/local/sqlite
+		mkdir -p  $(INSTALLDIR)/usr/local/iptables
 		mkdir -p  $(INSTALLDIR)/var/run
 		mkdir -p  $(INSTALLDIR)/var/empty
 
@@ -178,25 +180,25 @@ sqlite: PREPARE
 
 iptables:
 	@if [ ! -d $(IPTABLESDIR) ] ; then								\
-		tar -xf iptables-1.8.7.tar.bz2;							\
+		tar -xf iptables-1.8.7.tar.bz2;								\
 	fi
 	@cd $(IPTABLESDIR)												\
 		&&	CC=$(CC)												\
 			./configure												\
 				--host=$(HOST)										\
 				--prefix=$(INSTALLDIR)/usr/local/iptables			\
-				--with-curnel=$(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4	\
 				--disable-nftables									\
+				--enable-static --disable-shared					\
 		&& $(MAKE) 													\
 		&& $(MAKE) install
 
 kernel:
-	if [ ! -d $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4 ] ; then						\
+	@if [ ! -d $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4 ] ; then						\
 		tar -xf $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4.tar.xz -C $(KERNEL);		\
 	fi
-	cd $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4										\
+	@cd $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4										\
 		&&	cp config_for_TQ210_Linux_v2.1_CoreB  .config								\
-		&&	ARCH=$(ARCH) CROSS_COMPILE=$(CCTOOLS)- $(MAKE) menuconfig 					\
+		&&	patch -p1 < ../Kernel_3.0.8_TQ210_for_Linux_v2.4.patch						\
 		&&	ARCH=$(ARCH) CROSS_COMPILE=$(CCTOOLS)- $(MAKE) zImage 						\
 
 
@@ -210,6 +212,7 @@ clean:
 	rm -rf $(PPPDIR)
 	rm -rf $(DBDIR)
 	rm -rf $(IPTABLESDIR)
+	rm -rf $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4
 
 cleanBuild:
 	rm -rf $(INSTALLDIR)*

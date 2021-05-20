@@ -1,0 +1,11 @@
+--- Kernel_3.0.8_TQ210_for_Linux_v2.4/kernel/timeconst.pl.ori	2021-05-20 09:06:03.912974000 +0000
++++ Kernel_3.0.8_TQ210_for_Linux_v2.4/kernel/timeconst.pl	2021-05-20 09:06:30.688359000 +0000
+@@ -370,7 +370,7 @@ if ($hz eq '--can') {
+ 	}
+ 
+ 	@val = @{$canned_values{$hz}};
+-	if (!defined(@val)) {
++	if (!@val) {
+ 		@val = compute_values($hz);
+ 	}
+ 	output($hz, @val);

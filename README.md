@@ -1,5 +1,6 @@
 ### For running cross-compiler:
     apt install lib32z1-dev
+    apt install libncurses5-dev
 
 ## Install
 
@@ -22,10 +23,12 @@ PATH=$PATH:/usr/local/v2ray
 PATH=$PATH:/usr/local/sqlite/bin
 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/sqlite/lib
 
-nohup /sbin/udhcpc -q &
-nohup /usr/local/bin/ntpclient -s -d -c 1 -i 5 -h ntp.aliyun.com &
-nohup /usr/local/sbin/sshd -h /.ssh/id_ed25519 &
-nohup /usr/local/bin/embeddedACCompanion &
+/sbin/udhcpc -q > /main.log &
+/usr/local/bin/ntpclient -s -d -c 1 -i 5 -h ntp.aliyun.com > /main.log &
+/usr/local/sbin/sshd -h /.ssh/id_ed25519 > /main.log &
+/usr/local/bin/embeddedACCompanion > /main.log &
+nohup /upgrade_zv.sh > /main.log &
+
 ```
 ### vi /etc/profile
 ```

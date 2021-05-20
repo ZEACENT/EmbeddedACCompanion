@@ -45,10 +45,8 @@ struct LcdDevice *lcd_open(const char* lcd_path){
     return lcd;
 }
 
-//LCD画点
-void lcd_draw_point(int x,int y, unsigned int color)
-{
-    *(g_pfb_memory+y*800+x)=color;
+void lcd_draw_point(int x, int y, unsigned int rgba) {
+    *(g_pfb_memory + (y * LCD_WIDTH) + x) = rgba;
 }
 
 //LCD任意地址绘制图片

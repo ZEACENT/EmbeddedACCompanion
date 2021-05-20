@@ -2,6 +2,8 @@ CURDIR=$(shell pwd)
 CCTOOLS	=$(CURDIR)/YQgcc4.4_for_S5PV210/bin/arm-linux
 CC		=$(CURDIR)/YQgcc4.4_for_S5PV210/bin/arm-linux-gcc
 STRIP	=$(CURDIR)/YQgcc4.4_for_S5PV210/bin/arm-linux-strip
+KERNEL	=$(CURDIR)/kernel
+ARCH	=arm
 HOST	=arm-linux-gnueabi
 CFLAGS	= -L$(CURDIR)/lib -I$(CURDIR)/include -D_LINUX -std=gnu99 -lfont -lm -lfreetype -pthread \
 			-L$(INSTALLDIR)/usr/local/sqlite/lib -I$(INSTALLDIR)/usr/local/sqlite/include -lsqlite3
@@ -13,11 +15,12 @@ SSHDIR		=$(CURDIR)/ssh
 NTPDIR		=$(CURDIR)/ntpclient-2015
 PPPDIR		=$(CURDIR)/ppp
 DBDIR		=$(CURDIR)/sqlite-autoconf-3350500
+IPTABLESDIR	=$(CURDIR)/iptables-1.8.7
 
 MAINSRC= $(wildcard $(MAINDIR)/*.c)
 MAINOBJ= $(patsubst %.c, %.o, ${MAINSRC})
 
-.PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient ppp rp-pppoe v2ray sqlite clean cleanBuild cleanAll
+.PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient ppp rp-pppoe v2ray sqlite iptables kernel clean cleanBuild cleanAll
 
 all: PREPARE embeddedACCompanion alsa ssh ntpclient ppp rp-pppoe v2ray sqlite
 	cp $(MAINDIR)/embeddedACCompanion $(INSTALLDIR)/usr/local/bin
@@ -173,6 +176,29 @@ sqlite: PREPARE
 		&& $(MAKE) 													\
 		&& $(MAKE) install
 
+iptables:
+	@if [ ! -d $(IPTABLESDIR) ] ; then								\
+		tar -xf iptables-1.8.7.tar.bz2;							\
+	fi
+	@cd $(IPTABLESDIR)												\
+		&&	CC=$(CC)												\
+			./configure												\
+				--host=$(HOST)										\
+				--prefix=$(INSTALLDIR)/usr/local/iptables			\
+				--with-curnel=$(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4	\
+				--disable-nftables									\
+		&& $(MAKE) 													\
+		&& $(MAKE) install
+
+kernel:
+	if [ ! -d $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4 ] ; then						\
+		tar -xf $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4.tar.xz -C $(KERNEL);		\
+	fi
+	cd $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4										\
+		&&	cp config_for_TQ210_Linux_v2.1_CoreB  .config								\
+		&&	ARCH=$(ARCH) CROSS_COMPILE=$(CCTOOLS)- $(MAKE) menuconfig 					\
+		&&	ARCH=$(ARCH) CROSS_COMPILE=$(CCTOOLS)- $(MAKE) zImage 						\
+
 
 
 clean:
@@ -183,6 +209,7 @@ clean:
 	rm -rf $(NTPDIR)
 	rm -rf $(PPPDIR)
 	rm -rf $(DBDIR)
+	rm -rf $(IPTABLESDIR)
 
 cleanBuild:
 	rm -rf $(INSTALLDIR)*

@@ -23,25 +23,34 @@ extern int min_y;
 extern unsigned long touch_count;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-int ACSwitch = 0;
+static int ACSwitch = 0;
 static unsigned int temp = 26;
-unsigned long touch_count_old;
+static unsigned long touch_count_old;
 static char rec_string_buf[1024];
+static char *sql           = NULL;
+static char sql_buf[2048]  = {0};
+static char *error_msg     = NULL;
+static char db_add_flag = 0;
+static sqlite3 *db         = NULL;
 
-#define MY_PORT     0
-#define ALI_PORT    80
-#define ALI_IPV4    "47.104.94.62"
-#define TP_PATH     "/dev/event0"
-#define LCD_PATH    "/dev/fb0"
-#define BMP_PATH    "/Cover"
-#define FONT_PATH   "/OPPOSans-R.ttf"
-#define FONT_SIZE   100
-#define MINI_F_SIZE 40
-#define FPS         30
-#define LOG_PATH    "/main.log"
-#define AITALK_FILE "aitalk.wav"
-#define AITALK_RES  "/aitalk_result"
-#define AITALK_CONF 85
+#define MY_PORT             0
+#define ALI_PORT            80
+#define ALI_IPV4            "47.104.94.62"
+#define ALI_APPCODE         "0bccb88e30e14222bc8306b742d871b0"
+#define TP_PATH             "/dev/event0"
+#define LCD_PATH            "/dev/fb0"
+#define BMP_PATH            "/Cover"
+#define FONT_PATH           "/OPPOSans-R.ttf"
+#define FONT_SIZE           100
+#define MINI_F_SIZE         40
+#define FPS                 30
+#define LOG_PATH            "/main.log"
+#define AITALK_FILE         "aitalk.wav"
+#define AITALK_RES          "/aitalk_result"
+#define AITALK_CONF         85
+#define DB_NAME             "embedded.db"
+#define DB_TABLE            "ac_table"
+#define DB_UPDATE_INTERVAL  5
 
 static void* touch_screen_thread(void* arg){
     while (1) {
@@ -95,6 +104,7 @@ static inline void adjustTemp(unsigned int* temp, int num){
     *temp += num;
     *temp = *temp<16?16:*temp;
     *temp = *temp>36?36:*temp;
+    db_add_flag = 1;
 }
 
 static void parse_aitalk_token(FILE *aitalk_res_stream){
@@ -166,6 +176,27 @@ static void* flush_log_thread(void* arg) {
     }
 }
 
+static void* db_add_thread(void* arg) {
+    while (1) {
+        sleep(DB_UPDATE_INTERVAL);
+        if (db_add_flag) {
+            snprintf(sql_buf, sizeof(sql_buf), 
+                    "INSERT INTO \""DB_TABLE"\" VALUES(\
+                    null,\
+                    %d,\
+                    %d\
+                    );",
+                    temp,
+                    time(NULL));
+            if (sqlite3_exec(db, sql_buf, 0, 0, &error_msg)) {
+                printf("%s\n", error_msg);
+            }
+            sqlite3_free(error_msg);
+            db_add_flag = 0;
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     int ali_sock_fd;
     struct sockaddr_in my_addr;
@@ -180,7 +211,6 @@ int main(int argc, char **argv) {
     bitmap* bmVoice             = NULL;
     char buff[2048]             = {0};
     FILE *log_stream            = NULL;
-    sqlite3 *db                 = NULL;
     int ret;
 
     int PicNum = 1;
@@ -198,6 +228,7 @@ int main(int argc, char **argv) {
     pthread_t touchScreenThread;                            //touchscreen
     pthread_t localCtrlTempThread;                          //ctrl temp
     pthread_t flushLogThread;                               //flush log
+    pthread_t dbAddThread;                                  //db add
 
     // redirect stdout for log
     if (NULL == freopen(LOG_PATH, "w", stdout)) {
@@ -208,9 +239,22 @@ int main(int argc, char **argv) {
     }
 
     // init db
+    db_add_flag = 0;
     sqlite3_initialize();
-    ret = sqlite3_open_v2("test.db", &db, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL);
+    ret = sqlite3_open_v2(DB_NAME, &db, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL);
     printf("DB init: %d", ret);
+    if (ret) {
+        return -1;
+    }
+    sql = "CREATE TABLE "DB_TABLE" (\
+            ID INTEGER PRIMARY KEY,\
+            TEMP INTEGER,\
+            TIME INTEGER\
+            );";
+    if (sqlite3_exec(db, sql, 0, 0, &error_msg)) {
+        printf("%s\n", error_msg);
+    }
+    sqlite3_free(error_msg);
 
 #if !BAN_ONE_NET
     if(OneNet_Init())
@@ -227,6 +271,8 @@ int main(int argc, char **argv) {
         printf("Failed to create localCtrlTempThread\n");
     if(pthread_create(&flushLogThread, NULL, flush_log_thread, NULL))
         printf("Failed to create flushLogThread\n");
+    if(pthread_create(&dbAddThread, NULL, db_add_thread, NULL))
+        printf("Failed to create dbAddThread\n");
 
 #if !BAN_ALI_CLD
     if(-1 == (ali_sock_fd = socket(AF_INET, SOCK_STREAM, 0))){
@@ -306,7 +352,7 @@ int main(int argc, char **argv) {
             printf("check exp\n");
             sprintf(buff, "GET  /composite/queryexpress?number=%s HTTP/2.0\r\n"
             "Host:qyexpress.market.alicloudapi.com\r\n"
-            "Authorization:APPCODE 0bccb88e30e14222bc8306b742d871b0 \r\n\r\n", rec_string_buf);
+            "Authorization:APPCODE "ALI_APPCODE" \r\n\r\n", rec_string_buf);
             printf("ExpNum: %s\n", rec_string_buf);
             //发送报文
             send(ali_sock_fd, buff, strlen(buff), 0);
@@ -355,7 +401,6 @@ int main(int argc, char **argv) {
                     OneNet_SendData(buf, "Express", 1);
                 };
             }
-            // rec_string_buf = malloc(sizeof(char) * 100);
             rec_string_buf[0] = 'N'; rec_string_buf[1] = '\0';
         }
 #endif
@@ -427,7 +472,10 @@ int main(int argc, char **argv) {
     pthread_join(touchScreenThread, NULL);
     pthread_join(localCtrlTempThread, NULL);
     pthread_join(flushLogThread, NULL);
+    pthread_join(dbAddThread, NULL);
     lcd_close();
+    sqlite3_close_v2(db);
+    sqlite3_shutdown();
     fclose(log_stream);
 
     return 0;

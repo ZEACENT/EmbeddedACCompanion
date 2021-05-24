@@ -133,7 +133,7 @@ openssh: zlib-1.2.11
 			--with-zlib=$(SSHDIR)/install/zlib-1.2.11 				\
 			--without-openssl 										\
 			--disable-etc-default-login 							\
-			LDFLAGS="-static -pthread" 								\
+			LDFLAGS="-static" 										\
 			CC=$(CC)												\
 		&& $(MAKE)
 

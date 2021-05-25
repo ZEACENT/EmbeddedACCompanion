@@ -353,7 +353,7 @@ int main(int argc, char **argv) {
             sprintf(buff, "GET  /composite/queryexpress?number=%s HTTP/2.0\r\n"
             "Host:qyexpress.market.alicloudapi.com\r\n"
             "Authorization:APPCODE "ALI_APPCODE" \r\n\r\n", rec_string_buf);
-            printf("ExpNum: %s\n", rec_string_buf);
+            printf("Ali buff: %s\n", buff);
             //发送报文
             send(ali_sock_fd, buff, strlen(buff), 0);
             sleep(2);
@@ -361,6 +361,7 @@ int main(int argc, char **argv) {
             //获取正文的查询结果 获取JSON长度
             char mess[2000] = {0};
             int flag = 0;
+            memset(mess, 0, sizeof mess);
             while(1){
                 int read_rc = read(ali_sock_fd, mess+flag, 1);
                 if(-1 == read_rc){
@@ -368,6 +369,7 @@ int main(int argc, char **argv) {
                     return -1;
                 }
                 flag = flag + read_rc;
+                printf("%s", mess);
                 if (strstr(mess, "\r\n\r\n") != NULL){
                     break;
                 }

@@ -339,7 +339,9 @@ void OneNet_RecvData(void* arg , char CmdBuffer[])
                 if (UnpackCmdReq(pkg, &cmdid, &cmdid_len, &cmd_req, &cmd_req_len) == 0)
 				{
 					printf("[%d]cmdid: %s, req:%s, req_len: %d\n", __LINE__, cmdid, cmd_req, cmd_req_len);
-					strcpy(CmdBuffer ,cmd_req );  //将接收到的指令拷贝到 CmdBuffer 中					 
+					// strcpy(CmdBuffer ,cmd_req );  //将接收到的指令拷贝到 CmdBuffer 中					 
+					strncpy(CmdBuffer, cmd_req, cmd_req_len);
+                    CmdBuffer[cmd_req_len] = '\0';
 		    
                     free(cmdid);
                     free(cmd_req);

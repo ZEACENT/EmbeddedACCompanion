@@ -5,7 +5,7 @@
 #define BAN_ONE_NET     0
 #define BAN_ALI_CLD     0
 #define PRINT_X_Y       0
-#define LOCAL_CTRL      0
+#define LOCAL_CTRL      1
 
 // OneNET device
 #define DEVICE_ID  "632339932"

@@ -156,7 +156,7 @@ go version
 //get v2ray src, use proxy
 go get -u v2ray.com/core/...
 cd /root/go/pkg/mod/v2ray.com/core@v4.19.1+incompatible
-wget https://raw.githubusercontent.com/v2ray/v2ray-core/master/release/user-package.sh) 
+wget https://raw.githubusercontent.com/v2ray/v2ray-core/master/release/user-package.sh
 chmod 755 user-package.sh
 ./user-package.sh tgz 386 arm
 cp v2ray-custom-arm-linux-20210508-152307.tar.gz ~/EmbeddedACCompanion/

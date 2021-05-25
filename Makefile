@@ -16,16 +16,18 @@ NTPDIR		=$(CURDIR)/ntpclient-2015
 PPPDIR		=$(CURDIR)/ppp
 DBDIR		=$(CURDIR)/sqlite-autoconf-3350500
 IPTABLESDIR	=$(CURDIR)/iptables-1.8.7
+CURLDIR		=$(CURDIR)/curl-7.76.1
 
 MAINSRC= $(wildcard $(MAINDIR)/*.c)
 MAINOBJ= $(patsubst %.c, %.o, ${MAINSRC})
 
-.PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient ppp rp-pppoe v2ray sqlite iptables kernel clean cleanBuild cleanAll
+.PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient ppp rp-pppoe v2ray sqlite iptables kernel curl clean cleanBuild cleanAll
 
-all: PREPARE embeddedACCompanion alsa ssh ntpclient ppp rp-pppoe v2ray sqlite iptables
+all: PREPARE embeddedACCompanion alsa ssh ntpclient ppp rp-pppoe v2ray sqlite iptables curl
 	cp $(MAINDIR)/embeddedACCompanion $(INSTALLDIR)/usr/local/bin
 	cp $(NTPDIR)/ntpclient            $(INSTALLDIR)/usr/local/bin
 	cp $(PPPDIR)/ppp-2.4.7/pppd/pppd  $(INSTALLDIR)/usr/local/bin
+	cp $(CURLDIR)/install/bin/curl    $(INSTALLDIR)/usr/local/bin
 	-$(STRIP) $(INSTALLDIR)/usr/local/sbin/*
 	-$(STRIP) $(INSTALLDIR)/usr/local/bin/*
 	-$(STRIP) $(INSTALLDIR)/usr/local/alsa/bin/*
@@ -164,6 +166,15 @@ rp-pppoe: PREPARE
 		&& $(MAKE) install exec_prefix=$(INSTALLDIR)/usr/local
 
 v2ray: PREPARE
+	@if [ ! -f v2ray-custom-arm-linux-20210508-152307.tar.gz ] ; then							\
+		rm -rf /usr/local/go && tar -C /usr/local -xzf go1.16.4.linux-amd64.tar.gz;				\
+		export PATH=$PATH:/usr/local/go/bin;													\
+		go get -u v2ray.com/core/...;															\
+		cd /root/go/pkg/mod/v2ray.com/core@v4.19.1+incompatible;								\
+		wget https://raw.githubusercontent.com/v2ray/v2ray-core/master/release/user-package.sh;	\
+		chmod 755 user-package.sh;																\
+		./user-package.sh tgz 386 arm;															\
+	fi
 	tar -xf v2ray-custom-arm-linux-20210508-152307.tar.gz -C $(INSTALLDIR)/usr/local/v2ray
 
 sqlite: PREPARE
@@ -201,6 +212,21 @@ kernel:
 		&&	patch -p1 < ../Kernel_3.0.8_TQ210_for_Linux_v2.4.patch						\
 		&&	ARCH=$(ARCH) CROSS_COMPILE=$(CCTOOLS)- $(MAKE) zImage 						\
 
+curl:
+	@if [ ! -d $(CURLDIR) ] ; then									\
+		tar -xf curl-7.76.1.tar.gz;									\
+	fi
+	@cd $(CURLDIR)													\
+		&&	CC=$(CC)												\
+			LDFLAGS="-static" 										\
+			./configure												\
+				--host=$(HOST)										\
+				--prefix=$(CURLDIR)/install							\
+				--without-ssl										\
+				--enable-static --disable-shared					\
+		&& $(MAKE)	curl_LDFLAGS=-all-static						\
+		&& $(MAKE) install	curl_LDFLAGS=-all-static
+
 
 
 clean:
@@ -213,6 +239,7 @@ clean:
 	rm -rf $(DBDIR)
 	rm -rf $(IPTABLESDIR)
 	rm -rf $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4
+	rm -rf $(CURLDIR)
 
 cleanBuild:
 	rm -rf $(INSTALLDIR)*

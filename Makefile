@@ -16,12 +16,13 @@ NTPDIR		=$(CURDIR)/ntpclient-2015
 PPPDIR		=$(CURDIR)/ppp
 DBDIR		=$(CURDIR)/sqlite-autoconf-3350500
 IPTABLESDIR	=$(CURDIR)/iptables-1.8.7
+SSLDIR		=$(CURDIR)/openssl-1.1.1k
 CURLDIR		=$(CURDIR)/curl-7.76.1
 
 MAINSRC= $(wildcard $(MAINDIR)/*.c)
 MAINOBJ= $(patsubst %.c, %.o, ${MAINSRC})
 
-.PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient ppp rp-pppoe v2ray sqlite iptables kernel curl clean cleanBuild cleanAll
+.PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient ppp rp-pppoe v2ray sqlite iptables kernel openssl curl clean cleanBuild cleanAll
 
 all: PREPARE embeddedACCompanion alsa ssh ntpclient ppp rp-pppoe v2ray sqlite iptables curl
 	cp $(MAINDIR)/embeddedACCompanion $(INSTALLDIR)/usr/local/bin
@@ -130,12 +131,12 @@ openssh: zlib-1.2.11
 	fi
 	@cd $(SSHDIR)/openssh-8.3p1										\
 		&& ./configure												\
-			--host=$(HOST) 											\
-			-with-libs 												\
-			--with-zlib=$(SSHDIR)/install/zlib-1.2.11 				\
-			--without-openssl 										\
-			--disable-etc-default-login 							\
-			LDFLAGS="-static" 										\
+				--host=$(HOST)										\
+				-with-libs											\
+				--with-zlib=$(SSHDIR)/install/zlib-1.2.11			\
+				--without-openssl									\
+				--disable-etc-default-login							\
+				LDFLAGS="-static"									\
 			CC=$(CC)												\
 		&& $(MAKE)
 
@@ -212,7 +213,21 @@ kernel:
 		&&	patch -p1 < ../Kernel_3.0.8_TQ210_for_Linux_v2.4.patch						\
 		&&	ARCH=$(ARCH) CROSS_COMPILE=$(CCTOOLS)- $(MAKE) zImage 						\
 
-curl:
+openssl:
+	@if [ ! -d $(SSLDIR) ] ; then									\
+		tar -xf openssl-1.1.1k.tar.gz;								\
+	fi
+	@cd $(SSLDIR)													\
+		&&	./Configure												\
+				linux-armv4											\
+				--cross-compile-prefix=$(CCTOOLS)-					\
+				no-asm												\
+				no-shared											\
+				--prefix=$(SSLDIR)/install							\
+		&& $(MAKE)													\
+		&& $(MAKE)	install
+
+curl: openssl
 	@if [ ! -d $(CURLDIR) ] ; then									\
 		tar -xf curl-7.76.1.tar.gz;									\
 	fi
@@ -222,7 +237,7 @@ curl:
 			./configure												\
 				--host=$(HOST)										\
 				--prefix=$(CURLDIR)/install							\
-				--without-ssl										\
+				--with-ssl=$(SSLDIR)/install						\
 				--enable-static --disable-shared					\
 		&& $(MAKE)	curl_LDFLAGS=-all-static						\
 		&& $(MAKE) install	curl_LDFLAGS=-all-static
@@ -239,6 +254,7 @@ clean:
 	rm -rf $(DBDIR)
 	rm -rf $(IPTABLESDIR)
 	rm -rf $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4
+	rm -rf $(SSLDIR)
 	rm -rf $(CURLDIR)
 
 cleanBuild:

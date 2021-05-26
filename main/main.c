@@ -355,6 +355,7 @@ int main(int argc, char **argv) {
             "Authorization:APPCODE "ALI_APPCODE" \r\n\r\n", rec_string_buf);
             printf("Ali buff: %s\n", buff);
             //发送报文
+            // curl -i -k --get --include 'https://qyexpress.market.alicloudapi.com/composite/queryexpress?mobile=mobile&number=9716922678316'  -H 'Authorization:APPCODE 0bccb88e30e14222bc8306b742d871b0'
             send(ali_sock_fd, buff, strlen(buff), 0);
             sleep(2);
             printf("send ok\n");

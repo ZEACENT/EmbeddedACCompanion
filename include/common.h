@@ -8,8 +8,11 @@
 #define LOCAL_CTRL      1
 
 // OneNET device
-#define DEVICE_ID  "632339932"
-#define AUTH_KEY   "Vu8o99rROrIWyWbV5gJ9qx90E0A="
+#define DEVICE_ID           "632339932"
+#define AUTH_KEY            "Vu8o99rROrIWyWbV5gJ9qx90E0A="
+#define ALI_APPCODE         "0bccb88e30e14222bc8306b742d871b0"
+#define ALI_API_URL         "https://qyexpress.market.alicloudapi.com/composite/queryexpress"
+#define ALI_API_MOBILE      "mobile"
 
 /*---------------------------------------------------------------------------*/
 /* Type Definition Macros                                                    */

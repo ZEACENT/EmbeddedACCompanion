@@ -1,6 +1,5 @@
 ### For running cross-compiler:
-    apt install lib32z1-dev
-    apt install libncurses5-dev
+    apt install lib32z1-dev libncurses5-dev
 
 ## Install
 

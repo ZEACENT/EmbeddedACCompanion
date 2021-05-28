@@ -354,11 +354,11 @@ int main(int argc, char **argv) {
             strcpy(rec_string_buf, "N");
         }else if('N' != (rec_string_buf)[0] && 6 < strlen(rec_string_buf)){
             printf("check exp\n");
-            snprintf(buff, sizeof buff, "curl -i -k --get --include \
-                    '"ALI_API_URL"?\
-                    mobile="ALI_API_MOBILE"&\
-                    number=%s' \
-                    -H 'Authorization:APPCODE "ALI_APPCODE"'",
+            snprintf(buff, sizeof buff, "curl -i -k --get --include "
+                    "'"ALI_API_URL"?"
+                    "mobile="ALI_API_MOBILE"&"
+                    "number=%s' "
+                    "-H 'Authorization:APPCODE "ALI_APPCODE"'",
                     rec_string_buf);
             // sprintf(buff, "GET  /composite/queryexpress?number=%s HTTP/2.0\r\n"
             // "Host:qyexpress.market.alicloudapi.com\r\n"
@@ -402,11 +402,11 @@ int main(int argc, char **argv) {
                 }
                 mess_offset += read_rc;
             }
-            printf("%s", mess);
+            printf("%s\n", mess);
             close(ali_res_fd);
 
             printf("mess ok\n");
-            int mess_size  = atoi(strstr(mess, "Content-Length: ")+strlen("Content-Length: "));
+            // int mess_size  = atoi(strstr(mess, "Content-Length: ")+strlen("Content-Length: "));
             char *json_ptr = strstr(mess, "{\"data\":");
             char json_buff[ALI_MESS_LEN] = {0};
             //获取JSON的查询结果
@@ -426,7 +426,7 @@ int main(int argc, char **argv) {
             int array_size = cJSON_GetArraySize(list);
             char buf[20] = {0};
             memset(buf, 0, sizeof(buf));
-            OneNet_SendData(buf, "Express", 0);
+            int express_status = 0;
             for (int i = 0; i < array_size; ++i){
                 cJSON *array_item = cJSON_GetArrayItem(list,i);
                 cJSON *status = cJSON_GetObjectItem(array_item,"status");
@@ -434,8 +434,16 @@ int main(int argc, char **argv) {
                 printf("status = %s\n", status->valuestring);
                 printf("time = %s\n", time->valuestring);
                 if(NULL != strstr(status->valuestring, "派件")){
-                    OneNet_SendData(buf, "Express", 1);
-                };
+                    express_status = 1;
+                }
+            }
+            if (express_status) {
+                OneNet_SendData(buf, "Express", 1);
+                ACSwitch = 1;
+            }
+            else {
+                OneNet_SendData(buf, "Express", 0);
+                ACSwitch = 0;
             }
             rec_string_buf[0] = 'N'; rec_string_buf[1] = '\0';
         }

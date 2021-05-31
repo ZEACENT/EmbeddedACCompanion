@@ -63,7 +63,6 @@ static void* touch_screen_thread(void* arg){
 
 static void* one_net_rece_thread(void* arg){
     char RecvBuffer[100] = {0};
-    memset(rec_string_buf, '\0', sizeof(rec_string_buf));
     int i = 0;
     int skipFirst = 1;
     while(1){
@@ -216,6 +215,7 @@ int main(int argc, char **argv) {
     int ret                     = 0;
     // int ali_sock_fd             = 0;
     int ali_res_fd              = 0;
+    memset(rec_string_buf, 0, sizeof(rec_string_buf));
 
     int PicNum = 1;
     int color = 0x00ff0000;    //如影随形颜色

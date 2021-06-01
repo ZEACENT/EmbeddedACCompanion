@@ -20,7 +20,6 @@ SSLDIR		=$(CURDIR)/openssl-1.1.1k
 CURLDIR		=$(CURDIR)/curl-7.76.1
 
 MAINSRC= $(wildcard $(MAINDIR)/*.c)
-MAINOBJ= $(patsubst %.c, %.o, ${MAINSRC})
 
 .PHONY: all PREPARE embeddedACCompanion alsa ssh zlib-1.2.11 openssh ntpclient ppp rp-pppoe v2ray sqlite iptables kernel openssl curl clean cleanBuild cleanAll
 
@@ -52,12 +51,9 @@ PREPARE:
 		mkdir -p $(SSHDIR)/install
 		mkdir -p $(PPPDIR)
 
-%.o: %.c
-	$(CC) -c -o $@ $< $(CFLAGS)
-
-embeddedACCompanion: $(MAINOBJ) sqlite
+embeddedACCompanion: $(MAINSRC) sqlite
 	@cd $(MAINDIR)															\
-		&& $(CC) -o $@ $(MAINOBJ) $(CFLAGS)
+		&& $(CC) -o $@ $(MAINSRC) $(CFLAGS)
 
 aitalk: PREPARE
 	@if [ ! -d $(AITALKDIR) ] ; then										\
@@ -245,7 +241,6 @@ curl: openssl
 
 
 clean:
-	rm -rf $(MAINOBJ)
 	rm -rf $(AITALKDIR)
 	rm -rf $(ALSADIR)
 	rm -rf $(SSHDIR)

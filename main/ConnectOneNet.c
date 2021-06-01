@@ -13,7 +13,7 @@ int sockfd;
 //  返回参数：   无
 //  说明：     无
 //==========================================================
-void TcpClientInit(const char *ServerIp ,int ServerPort)
+int TcpClientInit(const char *ServerIp ,int ServerPort)
 {
     int res;
     struct sockaddr_in ser;
@@ -35,9 +35,13 @@ void TcpClientInit(const char *ServerIp ,int ServerPort)
     if (res < 0)
     {
         printf("connect error!\n");
+        return -1;
     }else{
         printf("connect success!\n");
+        return 0;
     }
+
+    return 0;
 }
 
 //==========================================================
@@ -61,7 +65,9 @@ void TcpClientClose(void)
 //==========================================================
 int OneNet_Init(void)
 {
-    TcpClientInit(SERVERIP ,SERVERPORT);
+    if (TcpClientInit(SERVERIP ,SERVERPORT)) {
+        return -1;
+    }
     //接入 OneNet 云平台
     if(OneNet_DevLink(DEVICE_ID, AUTH_KEY))
         return -1;

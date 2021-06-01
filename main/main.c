@@ -41,7 +41,7 @@ static sqlite3 *db         = NULL;
 #define BMP_PATH            "/Cover"
 #define FONT_PATH           "/OPPOSans-R.ttf"
 #define FONT_SIZE           100
-#define MINI_F_SIZE         40
+#define MINI_F_SIZE         30
 #define FPS                 30
 #define LOG_PATH            "/main.log"
 #define TMP_PATH_ALI        "/tmp/embeddedACCompanion.AliCloud"
@@ -53,6 +53,8 @@ static sqlite3 *db         = NULL;
 #define DB_UPDATE_INTERVAL  5
 #define READ_N_BYTES        1024
 #define ALI_MESS_LEN        2048
+#define EXP_STR_LEN         128
+#define EXP_BM_HEIGHT       30
 
 static void* touch_screen_thread(void* arg){
     while (1) {
@@ -209,6 +211,7 @@ int main(int argc, char **argv) {
     bitmap* bmAdd               = NULL;
     bitmap* bmSub               = NULL;
     bitmap* bmVoice             = NULL;
+    bitmap* bmExp               = NULL;
     char buff[2048]             = {0};
     char cmd[1024]              = {0};
     FILE *log_stream            = NULL;
@@ -225,7 +228,8 @@ int main(int argc, char **argv) {
     const char bufAdd[]   = "+";
     const char bufSub[]   = "-";
     // const char bufVoice[] = "V";
-    const char bufVoice[] = "";
+    // const char bufVoice[] = "";
+    char bufExp[EXP_STR_LEN]    = "暂无快递信息";
 
     pthread_t oneNetReceThread;                             //onenetReacv
     pthread_t oneNetSendThread;                             //onenetSend
@@ -261,13 +265,15 @@ int main(int argc, char **argv) {
     sqlite3_free(error_msg);
 
 #if !BAN_ONE_NET
-    if(OneNet_Init())
+    if (OneNet_Init()) {
         printf("Failed to init OneNet\n");
-
-    if(pthread_create(&oneNetReceThread, NULL, one_net_rece_thread, NULL))
-        printf("Failed to create oneNetReceThread\n");
-    if(pthread_create(&oneNetSendThread, NULL, one_net_send_thread, NULL))
-        printf("Failed to create oneNetSendThread\n");
+    }
+    else {
+        if(pthread_create(&oneNetReceThread, NULL, one_net_rece_thread, NULL))
+            printf("Failed to create oneNetReceThread\n");
+        if(pthread_create(&oneNetSendThread, NULL, one_net_send_thread, NULL))
+            printf("Failed to create oneNetSendThread\n");
+    }
 #endif
     if(pthread_create(&touchScreenThread, NULL, touch_screen_thread, NULL))
         printf("Failed to create touchScreenThread\n");
@@ -325,22 +331,26 @@ int main(int argc, char **argv) {
     bmTmp   = createBitmapWithInit(200, 100, 4, getColor(255,0,0,0));
     bmAdd   = createBitmapWithInit(200, 100, 4, getColor(255,0,0,0));
     bmSub   = createBitmapWithInit(200, 100, 4, getColor(255,0,0,0));
-    bmVoice = createBitmapWithInit(50, 50, 4, getColor(255,0,0,0));
+    // bmVoice = createBitmapWithInit(50, 50, 4, getColor(255,0,0,0));
+    bmExp   = createBitmapWithInit(LCD_WIDTH, EXP_BM_HEIGHT, 4, getColor(255,255,255,50));
     fontPrint(my_font, bmAC, 0, 0, bufAC, getColor(0,0,255,0), 0);
     fontPrint(my_font, bmTmp, 0, 0, bufTmp, getColor(0,0,255,0), 0);
     fontPrint(my_font, bmAdd, 50, 0, bufAdd, getColor(0,0,255,0), 0);
     fontPrint(my_font, bmSub, 50, 0, bufSub, getColor(0,0,255,0), 0);
-    fontPrint(my_mini_font, bmVoice, 0, 0, bufVoice, getColor(0,0,255,0), 0);
+    // fontPrint(my_mini_font, bmVoice, 0, 0, bufVoice, getColor(0,0,255,0), 0);
+    fontPrint(my_mini_font, bmExp, 0, 0, bufExp, getColor(0,0,0,0), 0);
     show_font_to_lcd(lcd->mp, 100, 70, bmAC);
     show_font_to_lcd(lcd->mp, 100, 310, bmTmp);
     show_font_to_lcd(lcd->mp, 500, 70, bmAdd);
     show_font_to_lcd(lcd->mp, 500, 310, bmSub);
-    show_font_to_lcd(lcd->mp, 375, 225, bmVoice);
+    // show_font_to_lcd(lcd->mp, 375, 225, bmVoice);
+    show_font_to_lcd(lcd->mp, 0, 0, bmExp);
     destroyBitmap(bmAC);
     destroyBitmap(bmTmp);
     destroyBitmap(bmAdd);
     destroyBitmap(bmSub);
-    destroyBitmap(bmVoice);
+    // destroyBitmap(bmVoice);
+    destroyBitmap(bmExp);
 
     while (1) {
 #if !BAN_ONE_NET
@@ -436,14 +446,17 @@ int main(int argc, char **argv) {
                 if(NULL != strstr(status->valuestring, "派件")){
                     express_status = 1;
                 }
+                else if(NULL != strstr(status->valuestring, "投递")){
+                    express_status = 1;
+                }
             }
             if (express_status) {
                 OneNet_SendData(buf, "Express", 1);
-                ACSwitch = 1;
+                snprintf(bufExp, sizeof bufExp, "快递号%s: 已派件", rec_string_buf);
             }
             else {
                 OneNet_SendData(buf, "Express", 0);
-                ACSwitch = 0;
+                snprintf(bufExp, sizeof bufExp, "快递号%s: 运输中", rec_string_buf);
             }
             rec_string_buf[0] = 'N'; rec_string_buf[1] = '\0';
         }
@@ -456,43 +469,51 @@ int main(int argc, char **argv) {
             bitmap *bmTmp1   = createBitmapWithInit(200,100,4,getColor(0,255,0,0));
             bitmap *bmAdd1   = createBitmapWithInit(200,100,4,getColor(0,255,0,0));
             bitmap *bmSub1   = createBitmapWithInit(200,100,4,getColor(0,255,0,0));
-            bitmap *bmVoice1 = createBitmapWithInit(50,50,4,getColor(0,255,0,0));
+            // bitmap *bmVoice1 = createBitmapWithInit(50,50,4,getColor(0,255,0,0));
+            bitmap *bmExp1   = createBitmapWithInit(LCD_WIDTH,EXP_BM_HEIGHT,4,getColor(255,255,255,50));
             fontPrint(my_font, bmAC1, 0, 0, bufAC, getColor(0,0,255,0), 0);
             fontPrint(my_font, bmTmp1, 0, 0, bufTmp, getColor(0,0,255,0), 0);
             fontPrint(my_font, bmAdd1, 50, 0, bufAdd, getColor(0,0,255,0), 0);
             fontPrint(my_font, bmSub1, 50, 0, bufSub, getColor(0,0,255,0), 0);
-            fontPrint(my_mini_font, bmVoice1, 0, 0, bufVoice, getColor(0,0,255,0), 0);
+            // fontPrint(my_mini_font, bmVoice1, 0, 0, bufVoice, getColor(0,0,255,0), 0);
+            fontPrint(my_mini_font, bmExp1, 0, 0, bufExp, getColor(0,0,0,0), 0);
             show_font_to_lcd(lcd->mp, 100, 70, bmAC1);
             show_font_to_lcd(lcd->mp, 100, 310, bmTmp1);
             show_font_to_lcd(lcd->mp, 500, 70, bmAdd1);
             show_font_to_lcd(lcd->mp, 500, 310, bmSub1);
-            show_font_to_lcd(lcd->mp, 375, 225, bmVoice1);
+            // show_font_to_lcd(lcd->mp, 375, 225, bmVoice1);
+            show_font_to_lcd(lcd->mp, 0, 0, bmExp1);
             destroyBitmap(bmAC1);
             destroyBitmap(bmTmp1);
             destroyBitmap(bmAdd1);
             destroyBitmap(bmSub1);
-            destroyBitmap(bmVoice1);
+            // destroyBitmap(bmVoice1);
+            destroyBitmap(bmExp1);
         }else{            //OFF Red
             bitmap *bmAC0 = createBitmapWithInit(200,100,4,getColor(255,0,0,0));
             bitmap *bmTmp0 = createBitmapWithInit(200,100,4,getColor(255,0,0,0));
             bitmap *bmAdd0 = createBitmapWithInit(200,100,4,getColor(255,0,0,0));
             bitmap *bmSub0 = createBitmapWithInit(200,100,4,getColor(255,0,0,0));
-            bitmap *bmVoice0 = createBitmapWithInit(50,50,4,getColor(255,0,0,0));
+            // bitmap *bmVoice0 = createBitmapWithInit(50,50,4,getColor(255,0,0,0));
+            bitmap *bmExp0   = createBitmapWithInit(LCD_WIDTH,EXP_BM_HEIGHT,4,getColor(255,255,255,50));
             fontPrint(my_font, bmAC0, 0, 0, bufAC, getColor(0,0,255,0), 0);
             fontPrint(my_font, bmTmp0, 0, 0, bufTmp, getColor(0,0,255,0), 0);
             fontPrint(my_font, bmAdd0, 50, 0, bufAdd, getColor(0,0,255,0), 0);
             fontPrint(my_font, bmSub0, 50, 0, bufSub, getColor(0,0,255,0), 0);
-            fontPrint(my_mini_font, bmVoice0, 0, 0, bufVoice, getColor(0,0,255,0), 0);
+            // fontPrint(my_mini_font, bmVoice0, 0, 0, bufVoice, getColor(0,0,255,0), 0);
+            fontPrint(my_mini_font, bmExp0, 0, 0, bufExp, getColor(0,0,0,0), 0);
             show_font_to_lcd(lcd->mp, 100, 70, bmAC0);
             show_font_to_lcd(lcd->mp, 100, 310, bmTmp0);
             show_font_to_lcd(lcd->mp, 500, 70, bmAdd0);
             show_font_to_lcd(lcd->mp, 500, 310, bmSub0);
-            show_font_to_lcd(lcd->mp, 375, 225, bmVoice0);
+            // show_font_to_lcd(lcd->mp, 375, 225, bmVoice0);
+            show_font_to_lcd(lcd->mp, 0, 0, bmExp0);
             destroyBitmap(bmAC0);
             destroyBitmap(bmTmp0);
             destroyBitmap(bmAdd0);
             destroyBitmap(bmSub0);
-            destroyBitmap(bmVoice0);
+            // destroyBitmap(bmVoice0);
+            destroyBitmap(bmExp0);
         }
 #if 0
         // lcd_draw_bmp(0, 0, "Cover");    //刷新背景

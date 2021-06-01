@@ -49,7 +49,7 @@ extern int sockfd;
 //  返回参数：   无
 //  说明：       无
 //==========================================================
-void TcpClientInit(const char *ServerIp ,int ServerPort);
+int TcpClientInit(const char *ServerIp ,int ServerPort);
 
 //==========================================================
 //  函数名称：   TcpClientClose

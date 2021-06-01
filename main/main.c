@@ -216,7 +216,6 @@ int main(int argc, char **argv) {
     char cmd[1024]              = {0};
     FILE *log_stream            = NULL;
     int ret                     = 0;
-    // int ali_sock_fd             = 0;
     int ali_res_fd              = 0;
     memset(rec_string_buf, 0, sizeof(rec_string_buf));
 
@@ -227,8 +226,6 @@ int main(int argc, char **argv) {
     char bufTmp[4]        = "26C";
     const char bufAdd[]   = "+";
     const char bufSub[]   = "-";
-    // const char bufVoice[] = "V";
-    // const char bufVoice[] = "";
     char bufExp[EXP_STR_LEN]    = "暂无快递信息";
 
     pthread_t oneNetReceThread;                             //onenetReacv
@@ -284,28 +281,6 @@ int main(int argc, char **argv) {
     if(pthread_create(&dbAddThread, NULL, db_add_thread, NULL))
         printf("Failed to create dbAddThread\n");
 
-#if !BAN_ALI_CLD
-    // if(-1 == (ali_sock_fd = socket(AF_INET, SOCK_STREAM, 0))){
-    //     printf("Failed to create ali_sock_fd\n");
-    //     return -1;
-    // }
-    // memset(&my_addr, 0, sizeof my_addr);
-    // my_addr.sin_family      = AF_INET;
-    // my_addr.sin_port        = htons(MY_PORT);
-    // my_addr.sin_addr.s_addr = INADDR_ANY;
-    // if(bind(ali_sock_fd, (struct sockaddr *)&my_addr, sizeof my_addr)){
-    //     printf("Failed to bind ali_sock_fd\n");
-    //     return -1;
-    // }
-    // memset(&alicloud_addr, 0, sizeof alicloud_addr);
-    // alicloud_addr.sin_family        = AF_INET;
-    // alicloud_addr.sin_port          = htons(ALI_PORT);
-    // alicloud_addr.sin_addr.s_addr   = inet_addr(ALI_IPV4);
-    // if(connect(ali_sock_fd, (struct sockaddr *)&alicloud_addr, sizeof alicloud_addr)){
-    //     printf("Failed to connect ali_sock_fd: %s\n", strerror(errno));
-    //     return -1;
-    // }
-#endif
 
     if(!(lcd = lcd_open(LCD_PATH)))
         printf("Failed to lcd_open\n");
@@ -370,12 +345,6 @@ int main(int argc, char **argv) {
                     "number=%s' "
                     "-H 'Authorization:APPCODE "ALI_APPCODE"'",
                     rec_string_buf);
-            // sprintf(buff, "GET  /composite/queryexpress?number=%s HTTP/2.0\r\n"
-            // "Host:qyexpress.market.alicloudapi.com\r\n"
-            // "Authorization:APPCODE "ALI_APPCODE" \r\n\r\n", rec_string_buf);
-            // printf("Ali buff: %s\n", buff);
-            //发送报文
-
             // curl -i -k --get --include 'https://qyexpress.market.alicloudapi.com/composite/queryexpress?mobile=mobile&number=9716922678316'  -H 'Authorization:APPCODE 0bccb88e30e14222bc8306b742d871b0'
             // -i参数打印出服务器回应的 HTTP 标头。
             // -k参数指定跳过 SSL 检测。
@@ -387,11 +356,6 @@ int main(int argc, char **argv) {
                 continue;
             }
 
-            // send(ali_sock_fd, buff, strlen(buff), 0);
-            // sleep(2);
-            // printf("send ok\n");
-            //获取正文的查询结果 获取JSON长度
-
             ali_res_fd = open(TMP_PATH_ALI, O_RDONLY);
             if (-1 == ali_res_fd) {
                 printf("Open "TMP_PATH_ALI" fail.\n");
@@ -401,7 +365,6 @@ int main(int argc, char **argv) {
             int mess_offset = 0;
             memset(mess, 0, sizeof mess);
             while(1){
-                // int read_rc = read(ali_sock_fd, mess+mess_offset, 1);
                 int read_rc = read(ali_res_fd, mess+mess_offset, READ_N_BYTES);
                 if (-1 == read_rc) {
                     printf("read ali_res_fd error.\n");
@@ -416,18 +379,9 @@ int main(int argc, char **argv) {
             close(ali_res_fd);
 
             printf("mess ok\n");
-            // int mess_size  = atoi(strstr(mess, "Content-Length: ")+strlen("Content-Length: "));
             char *json_ptr = strstr(mess, "{\"data\":");
             char json_buff[ALI_MESS_LEN] = {0};
-            //获取JSON的查询结果
-            // read(ali_sock_fd, json_buff, mess_size);
             memcpy(json_buff, json_ptr, mess_offset - (int)(json_ptr-mess));
-            // printf("read ok\n");
-            //CJSON解析
-            // for(int i = 0; i < mess_size; ++i){
-            //     printf("%c", json_buff[i]);
-            // }
-            // printf("\n");
             printf("JSON buff :\n%s\n", json_buff);
             cJSON *root = cJSON_Parse(json_buff);
             cJSON *data = cJSON_GetObjectItem(root, "data");    //L1

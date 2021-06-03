@@ -163,6 +163,31 @@ cp v2ray-custom-arm-linux-20210508-152307.tar.gz ~/EmbeddedACCompanion/
 
 ### alsa
 ```
+[root@GEC210 /]# cat /proc/asound/devices
+  0: [ 0]   : control
+  1:        : sequencer
+ 16: [ 0- 0]: digital audio playback
+ 17: [ 0- 1]: digital audio playback
+ 24: [ 0- 0]: digital audio capture
+ 25: [ 0- 1]: digital audio capture
+ 33:        : timer
+
+mkdir /dev/snd
+cd /dev/snd
+mknod controlCO c 116 0
+mknod seq c 116 1
+mknod pcmCOD0p c 116 16
+mknod pcmCOD1p c 116 17
+mknod pcmCODOc c 116 24
+mknod pcmCOD1c c 116 25
+mknod timer c 116 33
+/////
+
+mknod dsp c 14 3
+mknod audio c 14 4
+mknod mixer c 14 0
+
+
 mkdir /dev/snd
 cd /dev/snd
 mknod dsp c 14 3

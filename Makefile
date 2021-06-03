@@ -72,7 +72,7 @@ alsa: PREPARE
 	fi
 	@if [ ! -d $(ALSADIR)/alsa-utils-1.2.3 ] ; then							\
 		tar -xf $(CURDIR)/alsa-utils-1.2.3.tar.bz2 -C $(ALSADIR);			\
-		patch -p1 < alsa-utils-1.2.3.patch;									\
+		patch -p1 < $(CURDIR)/alsa-utils-1.2.3.patch;						\
 	fi
 	@cd $(ALSADIR)/alsa-lib-1.2.3.2											\
 		&&	CC=$(CC)														\
@@ -202,7 +202,7 @@ iptables:
 
 kernel:
 	@if [ ! -d $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4 ] ; then						\
-		tar -xf $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4.tar.xz -C $(KERNEL);		\
+		tar -xJf $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4.tar.xz -C $(KERNEL);		\
 	fi
 	@cd $(KERNEL)/Kernel_3.0.8_TQ210_for_Linux_v2.4										\
 		&&	cp config_for_TQ210_Linux_v2.1_CoreB  .config								\
